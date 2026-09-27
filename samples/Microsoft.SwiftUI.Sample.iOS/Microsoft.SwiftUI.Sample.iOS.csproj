@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0-ios</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <SupportedOSPlatformVersion>17.0</SupportedOSPlatformVersion>
+    <IsPackable>false</IsPackable>
+    <DefineConstants Condition="'$(Configuration)' == 'Debug' and '$(AilohaAgentXCFramework)' != ''">$(DefineConstants);AILOHA_DEBUG</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PartialAppManifest Include="Info.plist" Overwrite="false" />
+    <ProjectReference Include="../Microsoft.SwiftUI.Sample.Shared/Microsoft.SwiftUI.Sample.Shared.csproj" />
+    <ProjectReference Include="../Microsoft.SwiftUI.Sample.AilohaDebugBinding/Microsoft.SwiftUI.Sample.AilohaDebugBinding.csproj"
+                      Condition="'$(Configuration)' == 'Debug' and '$(AilohaAgentXCFramework)' != ''" />
+  </ItemGroup>
+</Project>

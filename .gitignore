@@ -1,0 +1,7 @@
+.build/
+artifacts/
+**/bin/
+**/obj/
+.DS_Store
+AilohaAgent.xcframework/
+AilohaAgent.xcframework.zip*

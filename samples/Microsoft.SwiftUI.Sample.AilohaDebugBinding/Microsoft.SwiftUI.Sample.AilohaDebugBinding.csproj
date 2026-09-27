@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net11.0-ios;net11.0-macos</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsBindingProject>true</IsBindingProject>
+    <IsPackable>false</IsPackable>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net11.0-ios'">17.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net11.0-macos'">14.0</SupportedOSPlatformVersion>
+    <AilohaDebugShimXCFramework Condition="'$(AilohaDebugShimXCFramework)' == ''">$(MSBuildProjectDirectory)/../../.build/ailoha-debug/AilohaDebugShim.xcframework</AilohaDebugShimXCFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ObjcBindingApiDefinition Include="ApiDefinition.cs" />
+    <NativeReference Include="$(AilohaAgentXCFramework)" Condition="'$(Configuration)' == 'Debug' and '$(TargetFramework)' == 'net11.0-ios' and '$(AilohaAgentXCFramework)' != ''">
+      <Kind>Framework</Kind>
+    </NativeReference>
+    <NativeReference Include="$(AilohaDebugShimXCFramework)" Condition="'$(Configuration)' == 'Debug'">
+      <Kind>Framework</Kind>
+    </NativeReference>
+  </ItemGroup>
+
+  <Target Name="RequireAilohaDebugInputs" BeforeTargets="PrepareForBuild" Condition="'$(Configuration)' == 'Debug'">
+    <Error Condition="'$(AilohaAgentXCFramework)' == ''"
+           Text="Supply -p:AilohaAgentXCFramework=/absolute/path/AilohaAgent.xcframework for the optional Debug sample." />
+    <Error Condition="!Exists('$(AilohaAgentXCFramework)/Info.plist')"
+           Text="The external AilohaAgent.xcframework is missing. Run scripts/verify-ailoha-input.py on the official v0.1.13 artifact." />
+    <Error Condition="!Exists('$(AilohaAgentXCFramework).zip')"
+           Text="The official v0.1.13 AilohaAgent.xcframework.zip must remain beside the external XCFramework." />
+    <VerifyFileHash File="$(AilohaAgentXCFramework).zip"
+                    Hash="7c61cc0705afd160910c962d56afa576550b60de464a4d79722514d622ec710f" />
+    <Error Condition="!Exists('$(AilohaDebugShimXCFramework)/Info.plist')"
+           Text="Build the sample-only native bridge first: bash scripts/build-ailoha-debug.sh /absolute/path/AilohaAgent.xcframework" />
+  </Target>
+</Project>

@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Microsoft.SwiftUI.Sample.MacOS'">
+    <AilohaDebugShimXCFramework Condition="'$(AilohaDebugShimXCFramework)' == ''">$(MSBuildThisFileDirectory)../.build/ailoha-debug/AilohaDebugShim.xcframework</AilohaDebugShimXCFramework>
+  </PropertyGroup>
+
+  <Target Name="VerifyOptInAilohaDebugSample"
+          BeforeTargets="PrepareForBuild"
+          Condition="'$(Configuration)' == 'Debug' and '$(AilohaAgentXCFramework)' != '' and ('$(MSBuildProjectName)' == 'Microsoft.SwiftUI.Sample.iOS' or '$(MSBuildProjectName)' == 'Microsoft.SwiftUI.Sample.MacOS')">
+    <Exec Command="python3 &quot;$(MSBuildThisFileDirectory)../scripts/verify-ailoha-input.py&quot;"
+          EnvironmentVariables="AILOHA_AGENT_XCFRAMEWORK=$(AilohaAgentXCFramework)" />
+    <Exec Condition="'$(MSBuildProjectName)' == 'Microsoft.SwiftUI.Sample.MacOS'"
+          Command="python3 &quot;$(MSBuildThisFileDirectory)../scripts/verify-ailoha-shim-load.py&quot;"
+          EnvironmentVariables="AILOHA_AGENT_XCFRAMEWORK=$(AilohaAgentXCFramework);AILOHA_DEBUG_SHIM_XCFRAMEWORK=$(AilohaDebugShimXCFramework)" />
+  </Target>
+</Project>

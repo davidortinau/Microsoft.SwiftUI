@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net11.0-ios;net11.0-macos</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsBindingProject>true</IsBindingProject>
+    <IsTrimmable>true</IsTrimmable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+    <PackageId>Microsoft.SwiftUI</PackageId>
+    <Version>0.1.0-preview.3</Version>
+    <Authors>David Ortinau</Authors>
+    <Description>SwiftUI node bindings and native UIKit/AppKit hosting for .NET on iOS and macOS.</Description>
+    <PackageTags>SwiftUI;iOS;macOS;AppKit;UIKit</PackageTags>
+    <RepositoryUrl>https://github.com/davidortinau/Microsoft.SwiftUI</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net11.0-ios'">17.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net11.0-macos'">14.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ObjcBindingApiDefinition Include="Native/ApiDefinition.cs" />
+    <NativeReference Include="../../.build/native/MicrosoftSwiftUIShim.xcframework">
+      <Kind>Framework</Kind>
+      <Frameworks>SwiftUI</Frameworks>
+    </NativeReference>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../LICENSE" Pack="true" PackagePath="/" />
+    <None Include="../../docs/ATTRIBUTION.md" Pack="true" PackagePath="docs/" />
+  </ItemGroup>
+
+  <Target Name="RequireNativeFramework" BeforeTargets="PrepareForBuild"
+          Condition="!Exists('$(MSBuildProjectDirectory)/../../.build/native/MicrosoftSwiftUIShim.xcframework/Info.plist')">
+    <Error Text="Build the native XCFramework first: bash scripts/build-xcframework.sh" />
+  </Target>
+</Project>
