@@ -59,8 +59,12 @@ static Dictionary<string, FrameworkEntry> VerifyNative(string root)
         var bytes = File.ReadAllBytes(Path.Combine(framework, path));
         Require(Hash(bytes) == hash, $"Generated XCFramework differs from its build provenance: {path}");
         if (path != "Info.plist")
+        {
             Require(bytes.AsSpan().IndexOf("deactivateHost:"u8) >= 0,
                 $"Native host-deactivation selector missing from generated framework: {path}");
+            Require(bytes.AsSpan().IndexOf("setTransparentDeleteBackdrop:"u8) >= 0,
+                $"Native delete-backdrop selector missing from generated framework: {path}");
+        }
     }
 
     var inventoryHeading = Array.IndexOf(lines, "XCFramework inventory (JSON):");
@@ -249,8 +253,8 @@ static void VerifyPackage(string path, string root, Dictionary<string, Framework
 
     foreach (var (tfm, target, methods) in new[]
     {
-        ("net11.0-ios", "net11.0-ios26.5", new[] { "DetachController" }),
-        ("net11.0-macos", "net11.0-macos26.5", new[] { "DetachController", "DetachView" }),
+        ("net11.0-ios", "net11.0-ios27.0", new[] { "DetachController" }),
+        ("net11.0-macos", "net11.0-macos27.0", new[] { "DetachController", "DetachView" }),
     })
     {
         var matchingGroups = groups.Where(group =>

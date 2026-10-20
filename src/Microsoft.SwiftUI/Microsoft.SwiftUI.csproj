@@ -8,9 +8,9 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
     <PackageId>Microsoft.SwiftUI</PackageId>
-    <Version>0.1.0-preview.3</Version>
+    <Version>0.1.0-preview.25</Version>
     <Authors>David Ortinau</Authors>
-    <Description>SwiftUI node bindings and native UIKit/AppKit hosting for .NET on iOS and macOS.</Description>
+    <Description>SwiftUI node bindings, SwiftUI App lifecycle, navigation and optional native hosting for .NET on iOS and macOS.</Description>
     <PackageTags>SwiftUI;iOS;macOS;AppKit;UIKit</PackageTags>
     <RepositoryUrl>https://github.com/davidortinau/Microsoft.SwiftUI</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

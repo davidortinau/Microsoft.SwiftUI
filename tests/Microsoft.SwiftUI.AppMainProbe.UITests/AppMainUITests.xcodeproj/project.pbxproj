@@ -1,0 +1,171 @@
+// !$*UTF8*$!
+{
+    archiveVersion = 1;
+    classes = {
+    };
+    objectVersion = 56;
+    objects = {
+
+/* Begin PBXBuildFile section */
+        BBBBBBBBBBBBBBBBBBBB0008 /* AppMainUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBBBBBBBBBBBBBBBBBBB0005 /* AppMainUITests.swift */; };
+        BBBBBBBBBBBBBBBBBBBB0009 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BBBBBBBBBBBBBBBBBBBB0007 /* XCTest.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+        BBBBBBBBBBBBBBBBBBBB0005 /* AppMainUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMainUITests.swift; sourceTree = "<group>"; };
+        BBBBBBBBBBBBBBBBBBBB0006 /* AppMainUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AppMainUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+        BBBBBBBBBBBBBBBBBBBB0007 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+        BBBBBBBBBBBBBBBBBBBB000B /* Frameworks */ = {
+            isa = PBXFrameworksBuildPhase;
+            buildActionMask = 2147483647;
+            files = (BBBBBBBBBBBBBBBBBBBB0009 /* XCTest.framework in Frameworks */, );
+            runOnlyForDeploymentPostprocessing = 0;
+        };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+        BBBBBBBBBBBBBBBBBBBB0002 = {
+            isa = PBXGroup;
+            children = (
+                BBBBBBBBBBBBBBBBBBBB0005 /* AppMainUITests.swift */,
+                BBBBBBBBBBBBBBBBBBBB0007 /* XCTest.framework */,
+                BBBBBBBBBBBBBBBBBBBB0003 /* Products */,
+            );
+            sourceTree = "<group>";
+        };
+        BBBBBBBBBBBBBBBBBBBB0003 /* Products */ = {
+            isa = PBXGroup;
+            children = (BBBBBBBBBBBBBBBBBBBB0006 /* AppMainUITests.xctest */, );
+            name = Products;
+            sourceTree = "<group>";
+        };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+        BBBBBBBBBBBBBBBBBBBB0004 /* AppMainUITests */ = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = BBBBBBBBBBBBBBBBBBBB0010 /* Build configuration list */;
+            buildPhases = (
+                BBBBBBBBBBBBBBBBBBBB000A /* Sources */,
+                BBBBBBBBBBBBBBBBBBBB000B /* Frameworks */,
+            );
+            buildRules = ();
+            dependencies = ();
+            name = AppMainUITests;
+            productName = AppMainUITests;
+            productReference = BBBBBBBBBBBBBBBBBBBB0006 /* AppMainUITests.xctest */;
+            productType = "com.apple.product-type.bundle.ui-testing";
+        };
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+        BBBBBBBBBBBBBBBBBBBB0001 /* Project object */ = {
+            isa = PBXProject;
+            attributes = {
+                BuildIndependentTargetsInParallel = YES;
+                LastUpgradeCheck = 2600;
+                TargetAttributes = {
+                    BBBBBBBBBBBBBBBBBBBB0004 = {CreatedOnToolsVersion = 26.6; };
+                };
+            };
+            buildConfigurationList = BBBBBBBBBBBBBBBBBBBB000D /* Build configuration list */;
+            compatibilityVersion = "Xcode 14.0";
+            developmentRegion = en;
+            hasScannedForEncodings = 0;
+            knownRegions = (en, Base);
+            mainGroup = BBBBBBBBBBBBBBBBBBBB0002;
+            productRefGroup = BBBBBBBBBBBBBBBBBBBB0003 /* Products */;
+            projectDirPath = "";
+            projectRoot = "";
+            targets = (BBBBBBBBBBBBBBBBBBBB0004 /* AppMainUITests */, );
+        };
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+        BBBBBBBBBBBBBBBBBBBB000A /* Sources */ = {
+            isa = PBXSourcesBuildPhase;
+            buildActionMask = 2147483647;
+            files = (BBBBBBBBBBBBBBBBBBBB0008 /* AppMainUITests.swift in Sources */, );
+            runOnlyForDeploymentPostprocessing = 0;
+        };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+        BBBBBBBBBBBBBBBBBBBB000E /* Debug */ = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                CLANG_ENABLE_MODULES = YES;
+                CODE_SIGNING_ALLOWED = NO;
+                IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+                SDKROOT = iphoneos;
+                SWIFT_VERSION = 5.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Debug;
+        };
+        BBBBBBBBBBBBBBBBBBBB000F /* Release */ = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                CLANG_ENABLE_MODULES = YES;
+                CODE_SIGNING_ALLOWED = NO;
+                IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+                SDKROOT = iphoneos;
+                SWIFT_VERSION = 5.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Release;
+        };
+        BBBBBBBBBBBBBBBBBBBB0011 /* Debug */ = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                CODE_SIGNING_ALLOWED = NO;
+                GENERATE_INFOPLIST_FILE = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+                LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks");
+                PRODUCT_BUNDLE_IDENTIFIER = com.davidortinau.microsoftswiftui.appmainprobe20261003.uitests;
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SDKROOT = iphoneos;
+                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+                SWIFT_VERSION = 5.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Debug;
+        };
+        BBBBBBBBBBBBBBBBBBBB0012 /* Release */ = {
+            isa = XCBuildConfiguration;
+            buildSettings = {
+                CODE_SIGNING_ALLOWED = NO;
+                GENERATE_INFOPLIST_FILE = YES;
+                IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+                LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks");
+                PRODUCT_BUNDLE_IDENTIFIER = com.davidortinau.microsoftswiftui.appmainprobe20261003.uitests;
+                PRODUCT_NAME = "$(TARGET_NAME)";
+                SDKROOT = iphoneos;
+                SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+                SWIFT_VERSION = 5.0;
+                TARGETED_DEVICE_FAMILY = "1,2";
+            };
+            name = Release;
+        };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+        BBBBBBBBBBBBBBBBBBBB000D /* Build configuration list */ = {
+            isa = XCConfigurationList;
+            buildConfigurations = (BBBBBBBBBBBBBBBBBBBB000E /* Debug */, BBBBBBBBBBBBBBBBBBBB000F /* Release */, );
+            defaultConfigurationIsVisible = 0;
+            defaultConfigurationName = Debug;
+        };
+        BBBBBBBBBBBBBBBBBBBB0010 /* Build configuration list */ = {
+            isa = XCConfigurationList;
+            buildConfigurations = (BBBBBBBBBBBBBBBBBBBB0011 /* Debug */, BBBBBBBBBBBBBBBBBBBB0012 /* Release */, );
+            defaultConfigurationIsVisible = 0;
+            defaultConfigurationName = Debug;
+        };
+/* End XCConfigurationList section */
+    };
+    rootObject = BBBBBBBBBBBBBBBBBBBB0001 /* Project object */;
+}

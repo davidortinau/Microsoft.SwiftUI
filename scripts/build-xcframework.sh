@@ -11,7 +11,8 @@ if [[ "$build" != "$root/.build/native" ]]; then
     exit 1
 fi
 output="$build/MicrosoftSwiftUIShim.xcframework"
-run="$(mktemp -d "$build/build.XXXXXX")"
+run="$build/build.$(date -u +%Y%m%dT%H%M%SZ).$$"
+mkdir -m 700 "$run"
 echo "Scratch: $run"
 cleanup() {
     if [[ $? -eq 0 ]]; then

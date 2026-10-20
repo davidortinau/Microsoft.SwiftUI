@@ -233,14 +233,14 @@ def main() -> None:
 
         document = ET.fromstring(nuspec)
         group = next(group for group in document.iter() if group.tag.endswith("group"))
-        group.set("targetFramework", "net11.0-ios27.0")
+        group.set("targetFramework", "net11.0-ios26.5")
         changed_nuspec = rewrite_zip(original, "Microsoft.SwiftUI.nuspec", ET.tostring(document))
         renamed = io.BytesIO()
         with zipfile.ZipFile(io.BytesIO(changed_nuspec)) as archive, zipfile.ZipFile(renamed, "w") as modified:
             for entry in archive.infolist():
                 contents = archive.read(entry)
-                entry.filename = entry.filename.replace("lib/net11.0-ios26.5/",
-                                                        "lib/net11.0-ios27.0/", 1)
+                entry.filename = entry.filename.replace("lib/net11.0-ios27.0/",
+                                                        "lib/net11.0-ios26.5/", 1)
                 modified.writestr(entry, contents)
         package.write_bytes(renamed.getvalue())
         verify(package, fixture, "dependency groups are missing or duplicate")
