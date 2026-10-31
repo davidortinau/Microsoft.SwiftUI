@@ -1740,7 +1740,11 @@ struct SwiftUINodeView: View {
 
     @ViewBuilder
     private func accessible<V: View>(_ view: V) -> some View {
-        if node.accessibilityLabelText.isEmpty || node.kind == "textEditor" { view }
+        // These kinds apply their own label inside content; a second
+        // .accessibilityLabel makes SwiftUI read it twice.
+        if node.accessibilityLabelText.isEmpty || node.kind == "textEditor" ||
+            node.kind == "slider" || node.kind == "progress" ||
+            node.kind == "indeterminateProgress" { view }
         else { view.accessibilityLabel(node.accessibilityLabelText) }
     }
 
@@ -1839,7 +1843,12 @@ struct SwiftUINodeView: View {
     @ViewBuilder
     private func styledPicker<V: View>(_ picker: V) -> some View {
         if node.pickerStyle == "segmented" {
-            picker.pickerStyle(.segmented)
+            // Segmented pickers do not expose their title to accessibility.
+            if node.accessibilityLabelText.isEmpty && !node.text.isEmpty {
+                picker.pickerStyle(.segmented).accessibilityLabel(node.text)
+            } else {
+                picker.pickerStyle(.segmented)
+            }
         } else if node.pickerStyle == "menu" {
             picker.pickerStyle(.menu)
         } else {
@@ -2050,9 +2059,9 @@ struct SwiftUINodeView: View {
                     node.valueChangedHandler?(next)
                 }
             ), in: node.minimum...node.maximum) {
+                // The label view is the accessible name; adding .accessibilityLabel reads it twice.
                 Text(node.accessibilityLabelText)
             }
-            .accessibilityLabel(node.accessibilityLabelText)
             .accessibilityIdentifier(node.automationId)
         case "progress":
             let fraction = node.maximum > 0 ? node.value / node.maximum : 0
