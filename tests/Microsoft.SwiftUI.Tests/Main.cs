@@ -823,6 +823,32 @@ var cases = new (string Name, Action Test)[]
         using var host = SwiftUIHost.CreateView(root);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("inspector presents a panel beside content with guarded column widths", () =>
+    {
+        var dismissals = 0;
+        var inspector = Views.Inspector(Views.Text("Dashboard"),
+            Views.NavigationStack(Views.Text("Sam")), () => dismissals++);
+        using var root = Views.VStack(inspector);
+        Assert(!inspector.IsPresented && inspector.Children.Count == 2
+            && inspector.Children[1].Kind == "navigationStack");
+        inspector.WithInspectorColumnWidth(360).WithInspectorColumnWidth(360, 360, 360)
+            .WithInspectorColumnWidth(520, min: 320).WithSheetDetentFraction(0.6);
+        inspector.IsPresented = true;
+        Assert(inspector.IsPresented);
+        inspector.IsPresented = false;
+        Assert(dismissals == 0);
+        Throws<ArgumentOutOfRangeException>(() => inspector.WithInspectorColumnWidth(0));
+        Throws<ArgumentOutOfRangeException>(() => inspector.WithInspectorColumnWidth(double.NaN));
+        Throws<ArgumentOutOfRangeException>(() => inspector.WithInspectorColumnWidth(360, min: 400));
+        Throws<ArgumentOutOfRangeException>(() => inspector.WithInspectorColumnWidth(360, min: 0));
+        Throws<ArgumentOutOfRangeException>(() => inspector.WithInspectorColumnWidth(360, max: 300));
+        Throws<ArgumentOutOfRangeException>(() => inspector.WithSheetDetentFraction(0));
+        Throws<InvalidOperationException>(() => root.WithInspectorColumnWidth(360));
+        Throws<InvalidOperationException>(() => Views.Sheet(Views.Text("A"), Views.Text("B"))
+            .WithInspectorColumnWidth(360));
+        using var host = SwiftUIHost.CreateView(root);
+        SwiftUIHost.DetachView(root, host);
+    }),
     ("bottom scroll anchor is opt-in and requires a Scroll", () =>
     {
         using var root = Views.Scroll(Views.Text("First"), Views.Text("Newest"))

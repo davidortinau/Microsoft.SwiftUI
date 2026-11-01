@@ -81,6 +81,15 @@ interface MSUNode
     [Export("sheetDetentFraction")]
     double SheetDetentFraction { get; set; }
 
+    [Export("inspectorMinWidth")]
+    double InspectorMinWidth { get; set; }
+
+    [Export("inspectorIdealWidth")]
+    double InspectorIdealWidth { get; set; }
+
+    [Export("inspectorMaxWidth")]
+    double InspectorMaxWidth { get; set; }
+
     [Export("focusRequested")]
     bool FocusRequested { get; set; }
 

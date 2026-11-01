@@ -34,6 +34,9 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var deleteCancelLabel = "" { willSet { objectWillChange.send() } }
     @objc public var deleteConfirmLabel = "" { willSet { objectWillChange.send() } }
     @objc public var sheetDetentFraction = 0.0 { willSet { objectWillChange.send() } }
+    @objc public var inspectorMinWidth = 0.0 { willSet { objectWillChange.send() } }
+    @objc public var inspectorIdealWidth = 0.0 { willSet { objectWillChange.send() } }
+    @objc public var inspectorMaxWidth = 0.0 { willSet { objectWillChange.send() } }
     @objc public var focusRequested = false { willSet { objectWillChange.send() } }
     @objc public var value = 0.0 { willSet { objectWillChange.send() } }
     @objc public var minimum = 0.0 { willSet { objectWillChange.send() } }
@@ -156,7 +159,7 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public init(kind: String) {
         precondition([
             "text", "inlineText", "button", "buttonGroup", "textField", "textEditor", "vstack", "hstack",
-            "scroll", "list", "navigation", "navigationLink", "sheet",
+            "scroll", "list", "navigation", "navigationLink", "sheet", "inspector",
             "image", "toggle", "slider", "picker", "navigationStack",
             "tabView", "tab", "form", "section", "secureField",
             "valuePicker", "searchable", "menu", "alert",
@@ -206,6 +209,15 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public func clearPath() {
         precondition(kind == "navigationStack")
         path.removeAll()
+    }
+
+    /// SwiftUI writes the inspector binding when the person closes it (for
+    /// example, swipes the compact sheet away); a programmatic close does not
+    /// pass through here, so it never reports a dismissal.
+    func applyInspectorPresentation(_ next: Bool) {
+        let closing = isPresented && !next
+        isPresented = next
+        if closing { dismissedHandler?() }
     }
 
     @objc public func invokeAction() {
@@ -2053,6 +2065,16 @@ struct SwiftUINodeView: View {
                         #endif
                     }
             }
+        case "inspector":
+            if let content = node.children.first, node.children.count == 2 {
+                SwiftUINodeView(node: content)
+                    .inspector(isPresented: Binding(
+                        get: { node.isPresented },
+                        set: { next in node.applyInspectorPresentation(next) }
+                    )) {
+                        InspectorContentView(node: node, content: node.children[1])
+                    }
+            }
         case "photoCover":
             PhotoCoverNodeView(node: node)
         case "image":
@@ -2206,3 +2228,50 @@ struct SwiftUINodeView: View {
         }
     }
 }
+
+/// Inspector content: a trailing column in a regular horizontal size class, a
+/// sheet in a compact one. Column widths apply only to the column; the sheet
+/// detent applies only when SwiftUI presents the inspector as a sheet.
+private struct InspectorContentView: View {
+    @ObservedObject var node: MSUNode
+    @ObservedObject var content: MSUNode
+
+    var body: some View {
+        columnWidth(SwiftUINodeView(node: content))
+            #if os(iOS)
+            .modifier(InspectorCompactDetent(fraction: node.sheetDetentFraction))
+            #endif
+    }
+
+    @ViewBuilder
+    private func columnWidth<V: View>(_ view: V) -> some View {
+        let ideal = node.inspectorIdealWidth
+        if ideal > 0 {
+            view.inspectorColumnWidth(
+                min: node.inspectorMinWidth > 0 ? CGFloat(node.inspectorMinWidth) : nil,
+                ideal: CGFloat(ideal),
+                max: node.inspectorMaxWidth > 0 ? CGFloat(node.inspectorMaxWidth) : nil)
+        } else {
+            view
+        }
+    }
+}
+
+#if os(iOS)
+private struct InspectorCompactDetent: ViewModifier {
+    let fraction: Double
+
+    func body(content: Content) -> some View {
+        if fraction > 0 {
+            // The selection moves an already-presented sheet when the fraction
+            // changes; a new detent set alone is not applied after presentation.
+            let detent = PresentationDetent.fraction(fraction)
+            content
+                .presentationDetents([detent], selection: .constant(detent))
+                .presentationBackgroundInteraction(.disabled)
+        } else {
+            content
+        }
+    }
+}
+#endif

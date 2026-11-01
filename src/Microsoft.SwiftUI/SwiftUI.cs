@@ -229,6 +229,24 @@ public static class SwiftUI
         return node;
     }
 
+    /// <summary>
+    /// Presents <paramref name="inspector"/> beside <paramref name="content"/> with SwiftUI
+    /// <c>inspector(isPresented:content:)</c>: a trailing column that leaves the content
+    /// usable in a regular horizontal size class, a sheet in a compact one. Set
+    /// <see cref="SwiftView.IsPresented"/> to show or hide it. <paramref name="onDismissed"/>
+    /// runs only when the person closes it (for example, swipes the compact sheet away).
+    /// </summary>
+    public static SwiftView Inspector(SwiftView content, SwiftView inspector, Action? onDismissed = null)
+    {
+        SwiftView.ValidateChildren([content, inspector]);
+        var node = new SwiftView("inspector");
+        node.Attach(content);
+        node.Attach(inspector);
+        if (onDismissed is not null)
+            node.SetDismissedHandler(onDismissed);
+        return node;
+    }
+
     public static SwiftView FullScreenPhotoCover(
         SwiftView content, SwiftView zoomablePhoto, SwiftView closeButton, Action onDismissed)
     {
