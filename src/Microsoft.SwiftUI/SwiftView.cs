@@ -343,8 +343,9 @@ public sealed class SwiftView : IDisposable
 
     /// <summary>
     /// Runs <paramref name="handler"/> on a double tap (SwiftUI
-    /// <c>TapGesture(count: 2)</c> as a simultaneous gesture), so a Button keeps
-    /// its immediate single-tap action. A non-empty
+    /// <c>TapGesture(count: 2)</c> as a high-priority gesture). A Button keeps
+    /// its single-tap action, which runs once a double tap is ruled out (so a
+    /// first tap that presents a sheet cannot swallow the second). A non-empty
     /// <paramref name="accessibilityActionName"/> also exposes the handler as a
     /// named accessibility action, which VoiceOver and automation can invoke.
     /// A disabled view ignores the gesture.

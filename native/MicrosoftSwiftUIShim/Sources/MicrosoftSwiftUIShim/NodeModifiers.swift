@@ -88,8 +88,9 @@ struct ScrollTargetReader<Content: View>: View {
 }
 
 /// Node behaviors added after the original modifier chain: a spoken-language
-/// accessibility label, a simultaneous double tap (a Button keeps its
-/// immediate single-tap action) and, inside a Scroll or List that scrolls to
+/// accessibility label, a double tap that takes priority over the view's own
+/// tap (a Button's single-tap action runs once a double tap is ruled out, so
+/// the first tap cannot present UI that swallows the second) and, inside a Scroll or List that scrolls to
 /// targets, the automation id as the identity ScrollViewProxy.scrollTo finds.
 /// Each applies only when its node property is set.
 struct NodeBehaviorModifier: ViewModifier {
@@ -125,9 +126,9 @@ struct NodeBehaviorModifier: ViewModifier {
         if node.doubleTapHandler == nil {
             view
         } else if node.doubleTapActionName.isEmpty {
-            view.simultaneousGesture(TapGesture(count: 2).onEnded { node.invokeDoubleTap() })
+            view.highPriorityGesture(TapGesture(count: 2).onEnded { node.invokeDoubleTap() })
         } else {
-            view.simultaneousGesture(TapGesture(count: 2).onEnded { node.invokeDoubleTap() })
+            view.highPriorityGesture(TapGesture(count: 2).onEnded { node.invokeDoubleTap() })
                 .accessibilityAction(named: Text(node.doubleTapActionName)) { node.invokeDoubleTap() }
         }
     }
