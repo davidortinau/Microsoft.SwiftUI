@@ -849,6 +849,35 @@ final class NodeTests: XCTestCase {
         XCTAssertEqual(secure.kind, "secureField")
     }
 
+    func testScrollBottomAnchorDefaultsOffAndKeepsChildrenWhenToggled() {
+        let scroll = MSUBridge.makeNode(kind: "scroll")
+        XCTAssertFalse(scroll.anchorsToBottom)
+        _ = SwiftUINodeView(node: scroll).body
+
+        var changes = 0
+        let observation = scroll.objectWillChange.sink { changes += 1 }
+        scroll.anchorsToBottom = true
+        XCTAssertTrue(scroll.anchorsToBottom)
+        XCTAssertEqual(changes, 1)
+        for index in 0..<3 {
+            let message = MSUBridge.makeNode(kind: "text")
+            message.text = "Message \(index)"
+            scroll.insertChild(message, at: scroll.children.count)
+        }
+        let retained = scroll.children.map(\.id)
+        _ = SwiftUINodeView(node: scroll).body
+
+        scroll.centerWhenShort = true
+        _ = SwiftUINodeView(node: scroll).body
+        XCTAssertTrue(scroll.centerWhenShort && scroll.anchorsToBottom)
+        let beforeDisable = changes
+        scroll.anchorsToBottom = false
+        _ = SwiftUINodeView(node: scroll).body
+        XCTAssertEqual(scroll.children.map(\.id), retained)
+        XCTAssertEqual(changes, beforeDisable + 1)
+        observation.cancel()
+    }
+
     func testHorizontalGridRetainsColumnsCellsAndActionsWhenARowIsRemoved() {
         let grid = MSUBridge.makeNode(kind: "horizontalGrid")
         grid.gridColumnMinimumWidths = [0, 0, 120, 0, 0]

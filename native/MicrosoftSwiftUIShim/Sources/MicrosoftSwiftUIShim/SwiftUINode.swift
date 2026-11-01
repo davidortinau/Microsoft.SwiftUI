@@ -117,6 +117,7 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var navigationTitle = "" { willSet { objectWillChange.send() } }
     @objc public var inlineNavigationTitle = false { willSet { objectWillChange.send() } }
     @objc public var centerWhenShort = false { willSet { objectWillChange.send() } }
+    @objc public var anchorsToBottom = false { willSet { objectWillChange.send() } }
     @objc public var nativeListCanvasHex = "" { willSet { objectWillChange.send() } }
     @objc public var nativeListCanvasDarkHex = "" { willSet { objectWillChange.send() } }
     @objc public var nativeListRowHex = "" { willSet { objectWillChange.send() } }
@@ -998,15 +999,38 @@ private struct ScrollNodeView: View {
             if #available(iOS 18.0, macOS 15.0, *) {
                 ScrollView { rows }
                     .defaultScrollAnchor(.center, for: .alignment)
+                    .modifier(BottomScrollAnchor(enabled: node.anchorsToBottom))
             } else {
                 GeometryReader { viewport in
                     ScrollView {
                         rows.frame(minHeight: viewport.size.height, alignment: .center)
                     }
+                    .modifier(BottomScrollAnchor(enabled: node.anchorsToBottom))
                 }
             }
         } else {
             ScrollView { rows }
+                .modifier(BottomScrollAnchor(enabled: node.anchorsToBottom))
+        }
+    }
+}
+
+/// Opens a scroll view at its end and keeps the end visible when content or
+/// container size changes, as a chat transcript does. Only the initial-offset
+/// and size-change roles are anchored, so short content keeps its alignment.
+private struct BottomScrollAnchor: ViewModifier {
+    let enabled: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if !enabled {
+            content
+        } else if #available(iOS 18.0, macOS 15.0, *) {
+            content
+                .defaultScrollAnchor(.bottom, for: .initialOffset)
+                .defaultScrollAnchor(.bottom, for: .sizeChanges)
+        } else {
+            content.defaultScrollAnchor(.bottom)
         }
     }
 }
