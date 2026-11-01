@@ -895,6 +895,57 @@ var cases = new (string Name, Action Test)[]
         using var host = SwiftUIHost.CreateView(root);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("horizontal drag reports changes and ends, keeps the tap, honors disabled and survives reparenting", () =>
+    {
+        var taps = 0;
+        var changed = new List<double>();
+        var ended = new List<(double Final, double Predicted)>();
+        var cancelled = 0;
+        var card = Views.Button("Card", () => taps++);
+        Assert(card.HorizontalDragMinimumDistance == 10 && !card.IsHorizontalDragActive);
+        Throws<InvalidOperationException>(() => card.InvokeHorizontalDrag([20]));
+        Assert(ReferenceEquals(card.OnHorizontalDrag(changed.Add, (x, p) => ended.Add((x, p)),
+            () => cancelled++, minimumDistance: 12), card));
+        Assert(card.HorizontalDragMinimumDistance == 12);
+        using var root = Views.VStack(Views.HStack(card));
+        card.InvokeHorizontalDrag([30, 90, 130], predictedEnd: 220);
+        Assert(changed.SequenceEqual([30d, 90d, 130d]) && ended.Count == 1
+            && ended[0] == (130d, 220d) && !card.IsHorizontalDragActive && cancelled == 0);
+        card.InvokeAction();
+        Assert(taps == 1);
+        card.IsEnabled = false;
+        card.InvokeHorizontalDrag([-150]);
+        Assert(changed.Count == 3 && ended.Count == 1); // a disabled view does not begin a drag
+        card.IsEnabled = true;
+        var row = root.Children[0];
+        root.RemoveAt(0);
+        Throws<InvalidOperationException>(() => card.InvokeHorizontalDrag([10]));
+        root.Add(row);
+        card.InvokeHorizontalDrag([-40]);
+        Assert(ended.Count == 2 && ended[1] == (-40d, -40d));
+        Throws<ArgumentNullException>(() => Views.Text("x").OnHorizontalDrag(null!, (_, _) => { }));
+        Throws<ArgumentNullException>(() => Views.Text("x").OnHorizontalDrag(_ => { }, null!));
+        Throws<ArgumentOutOfRangeException>(() => Views.Text("x").OnHorizontalDrag(_ => { }, (_, _) => { },
+            minimumDistance: -1));
+        Throws<ArgumentException>(() => card.InvokeHorizontalDrag([]));
+        using var host = SwiftUIHost.CreateView(root);
+        SwiftUIHost.DetachView(root, host);
+    }),
+    ("transform is unset by default, records offset and rotation, and animates on request", () =>
+    {
+        using var card = Views.VStack(Views.Text("Card"));
+        Assert(card.OffsetX == 0 && card.OffsetY == 0 && card.RotationDegrees == 0 && !card.IsTransformAnimated);
+        Assert(ReferenceEquals(card.WithTransform(64, rotationDegrees: 3.5), card));
+        Assert(card.OffsetX == 64 && card.OffsetY == 0 && card.RotationDegrees == 3.5 && !card.IsTransformAnimated);
+        card.WithTransform(0, 0, 0, animated: true);
+        Assert(card.OffsetX == 0 && card.RotationDegrees == 0 && card.IsTransformAnimated);
+        Throws<ArgumentOutOfRangeException>(() => card.WithTransform(double.NaN));
+        Throws<ArgumentOutOfRangeException>(() => card.WithTransform(0, double.PositiveInfinity));
+        Throws<ArgumentOutOfRangeException>(() => card.WithTransform(0, 0, double.NaN));
+        using var root = Views.VStack(Views.Text("Hosted").WithTransform(-20, 0, -1.1));
+        using var host = SwiftUIHost.CreateView(root);
+        SwiftUIHost.DetachView(root, host);
+    }),
     ("scroll to a target is opt-in on Scroll and List and validates its anchor", () =>
     {
         using var scroll = Views.Scroll(Views.Text("One").WithAccessibilityIdentifier("s.1"),

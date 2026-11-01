@@ -31,6 +31,9 @@ public sealed class SwiftView : IDisposable
     private Action? _fileImportCancelledHandler;
     private Action<double, nint>? _viewportChangedHandler;
     private Action? _doubleTapHandler;
+    private Action<double>? _dragChangedHandler;
+    private Action<double, double>? _dragEndedHandler;
+    private Action? _dragCancelledHandler;
     private Action<NSData, string, string>? _photoPickedHandler;
     private Action<string>? _photoPickErrorHandler;
     private Action? _photoPickCancelledHandler;
@@ -374,6 +377,100 @@ public sealed class SwiftView : IDisposable
             throw new InvalidOperationException("A detached view cannot invoke its double tap until reparented.");
         _native.InvokeDoubleTap();
     }
+
+    /// <summary>
+    /// Follows a horizontal drag (SwiftUI <c>DragGesture</c> in the global
+    /// coordinate space, as a high-priority gesture). <paramref name="onChanged"/>
+    /// receives the horizontal translation in points from the touch-down point;
+    /// <paramref name="onEnded"/> receives the final and the velocity-predicted
+    /// end translation when the finger lifts; <paramref name="onCancelled"/> runs
+    /// when the system cancels the drag instead. A touch that moves less than
+    /// <paramref name="minimumDistance"/> points stays a tap, so a Button's action
+    /// and <see cref="OnDoubleTap"/> keep working on the same view. Vertical
+    /// movement is ignored. A disabled view does not begin a drag; a drag that
+    /// began while enabled always ends or cancels. Unset by default.
+    /// </summary>
+    public SwiftView OnHorizontalDrag(Action<double> onChanged, Action<double, double> onEnded,
+                                      Action? onCancelled = null, double minimumDistance = 10)
+    {
+        RequireActive();
+        ArgumentNullException.ThrowIfNull(onChanged);
+        ArgumentNullException.ThrowIfNull(onEnded);
+        if (!double.IsFinite(minimumDistance) || minimumDistance < 0)
+            throw new ArgumentOutOfRangeException(nameof(minimumDistance));
+        _native.HorizontalDragMinimumDistance = minimumDistance;
+        if (_nativeHandlersActive)
+            _native.SetHorizontalDragHandlers(onChanged, onEnded, onCancelled);
+        _dragChangedHandler = onChanged;
+        _dragEndedHandler = onEnded;
+        _dragCancelledHandler = onCancelled;
+        return this;
+    }
+
+    /// <summary>The drag's minimum distance in points (10 unless set).</summary>
+    public double HorizontalDragMinimumDistance
+    {
+        get { RequireActive(); return _native.HorizontalDragMinimumDistance; }
+    }
+
+    /// <summary>True between a drag's first change and its end or cancellation.</summary>
+    public bool IsHorizontalDragActive
+    {
+        get { RequireActive(); return _native.HorizontalDragActive; }
+    }
+
+    /// <summary>
+    /// Reports a drag as the gesture would (for tests and automation): each
+    /// value in <paramref name="translations"/> as a change, then an end at the
+    /// last one (predicted end <paramref name="predictedEnd"/>, or the last value).
+    /// </summary>
+    public void InvokeHorizontalDrag(double[] translations, double? predictedEnd = null)
+    {
+        RequireActive();
+        ArgumentNullException.ThrowIfNull(translations);
+        if (translations.Length == 0)
+            throw new ArgumentException("A drag needs at least one translation.", nameof(translations));
+        if (_dragEndedHandler is null)
+            throw new InvalidOperationException("This view has no horizontal drag handler.");
+        if (!_nativeHandlersActive)
+            throw new InvalidOperationException("A detached view cannot invoke its drag until reparented.");
+        foreach (var translation in translations)
+            _native.ReportHorizontalDragChanged(translation);
+        var last = translations[^1];
+        _native.ReportHorizontalDragEnded(last, predictedEnd ?? last);
+    }
+
+    /// <summary>
+    /// Offsets this view by (<paramref name="offsetX"/>, <paramref name="offsetY"/>)
+    /// points and rotates it <paramref name="rotationDegrees"/> degrees about its
+    /// center (SwiftUI <c>offset</c> and <c>rotationEffect</c>, which do not
+    /// change layout). With <paramref name="animated"/> the change animates with
+    /// a spring, for example a card springing back to zero; otherwise it applies
+    /// immediately, as a card following the finger does. Views that never call
+    /// this are unchanged.
+    /// </summary>
+    public SwiftView WithTransform(double offsetX, double offsetY = 0, double rotationDegrees = 0,
+                                   bool animated = false)
+    {
+        RequireActive();
+        if (!double.IsFinite(offsetX)) throw new ArgumentOutOfRangeException(nameof(offsetX));
+        if (!double.IsFinite(offsetY)) throw new ArgumentOutOfRangeException(nameof(offsetY));
+        if (!double.IsFinite(rotationDegrees)) throw new ArgumentOutOfRangeException(nameof(rotationDegrees));
+        _native.SetTransform(offsetX, offsetY, rotationDegrees, animated);
+        return this;
+    }
+
+    /// <summary>The latest <see cref="WithTransform"/> horizontal offset in points (0 unless set).</summary>
+    public double OffsetX { get { RequireActive(); return _native.OffsetX; } }
+
+    /// <summary>The latest <see cref="WithTransform"/> vertical offset in points (0 unless set).</summary>
+    public double OffsetY { get { RequireActive(); return _native.OffsetY; } }
+
+    /// <summary>The latest <see cref="WithTransform"/> rotation in degrees (0 unless set).</summary>
+    public double RotationDegrees { get { RequireActive(); return _native.RotationDegrees; } }
+
+    /// <summary>Whether the latest <see cref="WithTransform"/> change animates.</summary>
+    public bool IsTransformAnimated { get { RequireActive(); return _native.TransformAnimated; } }
 
     /// <summary>
     /// Scrolls this Scroll or List so the descendant with accessibility identifier
@@ -1277,6 +1374,9 @@ public sealed class SwiftView : IDisposable
         _fileImportCancelledHandler = null;
         _viewportChangedHandler = null;
         _doubleTapHandler = null;
+        _dragChangedHandler = null;
+        _dragEndedHandler = null;
+        _dragCancelledHandler = null;
         _photoPickedHandler = null;
         _photoPickErrorHandler = null;
         _photoPickCancelledHandler = null;
@@ -1323,6 +1423,8 @@ public sealed class SwiftView : IDisposable
             if (_fileImportCancelledHandler is not null) _native.SetFileImportCancelledHandler(_fileImportCancelledHandler);
             if (_viewportChangedHandler is not null) _native.SetViewportChangedHandler(_viewportChangedHandler);
             if (_doubleTapHandler is not null) _native.SetDoubleTapHandler(_doubleTapHandler);
+            if (_dragChangedHandler is not null && _dragEndedHandler is not null)
+                _native.SetHorizontalDragHandlers(_dragChangedHandler, _dragEndedHandler, _dragCancelledHandler);
             if (_photoPickedHandler is not null) _native.SetPhotoPickedHandler(_photoPickedHandler);
             if (_photoPickErrorHandler is not null) _native.SetPhotoPickErrorHandler(_photoPickErrorHandler);
             if (_photoPickCancelledHandler is not null) _native.SetPhotoPickCancelledHandler(_photoPickCancelledHandler);

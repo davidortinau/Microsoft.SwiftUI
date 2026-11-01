@@ -375,6 +375,39 @@ interface MSUNode
     [Export("invokeDoubleTap")]
     void InvokeDoubleTap();
 
+    [Export("hasTransform")]
+    bool HasTransform { get; }
+
+    [Export("offsetX")]
+    double OffsetX { get; }
+
+    [Export("offsetY")]
+    double OffsetY { get; }
+
+    [Export("rotationDegrees")]
+    double RotationDegrees { get; }
+
+    [Export("transformAnimated")]
+    bool TransformAnimated { get; }
+
+    [Export("setTransformOffsetX:offsetY:rotation:animated:")]
+    void SetTransform(double offsetX, double offsetY, double rotation, bool animated);
+
+    [Export("horizontalDragMinimumDistance")]
+    double HorizontalDragMinimumDistance { get; set; }
+
+    [Export("horizontalDragActive")]
+    bool HorizontalDragActive { get; }
+
+    [Export("reportHorizontalDragChanged:")]
+    void ReportHorizontalDragChanged(double translationX);
+
+    [Export("reportHorizontalDragEnded:predicted:")]
+    void ReportHorizontalDragEnded(double translationX, double predictedX);
+
+    [Export("reportHorizontalDragCancelled")]
+    void ReportHorizontalDragCancelled();
+
     [Export("pathDepth")]
     nint PathDepth { get; }
 
@@ -467,6 +500,10 @@ interface MSUNode
 
     [Export("setDoubleTapHandler:")]
     void SetDoubleTapHandler(Action handler);
+
+    [Export("setHorizontalDragChangedHandler:endedHandler:cancelledHandler:")]
+    void SetHorizontalDragHandlers(Action<double> changed, Action<double, double> ended,
+                                   [NullAllowed] Action cancelled);
 
     [Export("setPhotoPickedHandler:")]
     void SetPhotoPickedHandler(Action<NSData, string, string> handler);

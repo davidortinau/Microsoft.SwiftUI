@@ -99,7 +99,30 @@ struct NodeBehaviorModifier: ViewModifier {
     let ownsAccessibilityLabel: Bool
 
     func body(content: Content) -> some View {
-        targeted(doubleTapped(spoken(content)))
+        targeted(transformed(dragged(doubleTapped(spoken(content)))))
+    }
+
+    @ViewBuilder
+    private func dragged<V: View>(_ view: V) -> some View {
+        if node.hasHorizontalDrag {
+            view.modifier(HorizontalDragModifier(node: node))
+        } else {
+            view
+        }
+    }
+
+    /// Offset and rotation scoped to these two modifiers: a spring when the
+    /// latest change asked for animation, otherwise immediate (finger tracking).
+    @ViewBuilder
+    private func transformed<V: View>(_ view: V) -> some View {
+        if node.hasTransform {
+            view.animation(node.transformAnimated ? .spring(response: 0.32, dampingFraction: 0.72) : nil) {
+                $0.offset(x: node.offsetX, y: node.offsetY)
+                    .rotationEffect(.degrees(node.rotationDegrees))
+            }
+        } else {
+            view
+        }
     }
 
     @ViewBuilder
@@ -140,5 +163,34 @@ struct NodeBehaviorModifier: ViewModifier {
         } else {
             view
         }
+    }
+}
+
+/// A horizontal DragGesture with high priority over the view's own tap: a
+/// touch that moves less than the minimum distance stays a tap (a Button's
+/// action or a double tap), a longer one becomes the drag. Translations are
+/// measured in the global space so the view's own offset or rotation does not
+/// feed back into them. A drag the system cancels (no onEnded) is reported
+/// once its gesture state resets.
+struct HorizontalDragModifier: ViewModifier {
+    @ObservedObject var node: MSUNode
+    @GestureState private var isDragging = false
+
+    func body(content: Content) -> some View {
+        content.highPriorityGesture(
+            DragGesture(minimumDistance: max(0, node.horizontalDragMinimumDistance),
+                        coordinateSpace: .global)
+                .updating($isDragging) { _, state, _ in state = true }
+                .onChanged { node.reportHorizontalDragChanged($0.translation.width) }
+                .onEnded {
+                    node.reportHorizontalDragEnded($0.translation.width,
+                                                   predicted: $0.predictedEndTranslation.width)
+                },
+            including: node.isEnabled ? .all : .subviews)
+            .onChange(of: isDragging) { _, dragging in
+                guard !dragging else { return }
+                // onEnded, when it runs, runs in the same turn; only a cancelled drag is still active.
+                DispatchQueue.main.async { node.reportHorizontalDragCancelled() }
+            }
     }
 }

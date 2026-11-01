@@ -132,6 +132,17 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var speechLanguage = "" { willSet { objectWillChange.send() } }
     /// Accessibility action name that also exposes the double-tap handler to assistive technology.
     @objc public var doubleTapActionName = "" { willSet { objectWillChange.send() } }
+    /// Card transform (offset in points, rotation in degrees); applied only once set.
+    @objc public private(set) var hasTransform = false
+    @objc public private(set) var offsetX = 0.0
+    @objc public private(set) var offsetY = 0.0
+    @objc public private(set) var rotationDegrees = 0.0
+    /// Whether the latest transform change animates (a spring) or follows immediately.
+    @objc public private(set) var transformAnimated = false
+    /// Minimum horizontal-drag distance in points before the drag begins.
+    @objc public var horizontalDragMinimumDistance = 10.0 { willSet { objectWillChange.send() } }
+    /// True between a drag's first change and its end or cancellation.
+    @objc public private(set) var horizontalDragActive = false
     /// Scroll or List: descendants with an automation id become scrollTo targets.
     @objc public private(set) var scrollTargetsEnabled = false { willSet { objectWillChange.send() } }
     @objc public private(set) var scrollTargetId = ""
@@ -172,6 +183,9 @@ public final class MSUNode: NSObject, ObservableObject {
     var fileImportCancelledHandler: (() -> Void)?
     var viewportChangedHandler: ((Double, Int) -> Void)?
     var doubleTapHandler: (() -> Void)?
+    var dragChangedHandler: ((Double) -> Void)?
+    var dragEndedHandler: ((Double, Double) -> Void)?
+    var dragCancelledHandler: (() -> Void)?
     var photoPickedHandler: ((Data, String, String) -> Void)?
     var photoPickErrorHandler: ((String) -> Void)?
     var photoPickCancelledHandler: (() -> Void)?
@@ -271,6 +285,10 @@ public final class MSUNode: NSObject, ObservableObject {
         fileImportCancelledHandler = nil
         viewportChangedHandler = nil
         doubleTapHandler = nil
+        dragChangedHandler = nil
+        dragEndedHandler = nil
+        dragCancelledHandler = nil
+        horizontalDragActive = false
         photoPickedHandler = nil
         photoPickErrorHandler = nil
         photoPickCancelledHandler = nil
@@ -286,6 +304,57 @@ public final class MSUNode: NSObject, ObservableObject {
 
     @objc public func invokeDoubleTap() {
         if isEnabled { doubleTapHandler?() }
+    }
+
+    /// Sets the view's offset and rotation together. With animated true the
+    /// change animates with a spring (for example back to zero); otherwise it
+    /// follows immediately, as a dragged card does.
+    @objc(setTransformOffsetX:offsetY:rotation:animated:)
+    public func setTransform(offsetX x: Double, offsetY y: Double, rotation degrees: Double, animated: Bool) {
+        precondition(x.isFinite && y.isFinite && degrees.isFinite, "A transform needs finite values")
+        objectWillChange.send()
+        hasTransform = true
+        transformAnimated = animated
+        offsetX = x
+        offsetY = y
+        rotationDegrees = degrees
+    }
+
+    /// The gesture is attached only while a changed or ended handler exists.
+    @objc(setHorizontalDragChangedHandler:endedHandler:cancelledHandler:)
+    public func setHorizontalDragHandlers(
+        _ changed: @escaping @convention(block) (Double) -> Void,
+        endedHandler ended: @escaping @convention(block) (Double, Double) -> Void,
+        cancelledHandler cancelled: (@convention(block) () -> Void)?) {
+        objectWillChange.send()
+        dragChangedHandler = changed
+        dragEndedHandler = ended
+        dragCancelledHandler = cancelled
+    }
+
+    var hasHorizontalDrag: Bool { dragChangedHandler != nil || dragEndedHandler != nil }
+
+    /// A DragGesture change: the horizontal translation from the touch-down point.
+    @objc public func reportHorizontalDragChanged(_ translationX: Double) {
+        guard isEnabled, hasHorizontalDrag else { return }
+        horizontalDragActive = true
+        dragChangedHandler?(translationX)
+    }
+
+    /// The finger lifted: the final and the velocity-predicted end translation.
+    /// Delivered only for a drag that began while the view was enabled, even if
+    /// it was disabled meanwhile, so the owner can always settle the view.
+    @objc public func reportHorizontalDragEnded(_ translationX: Double, predicted predictedX: Double) {
+        guard horizontalDragActive else { return }
+        horizontalDragActive = false
+        dragEndedHandler?(translationX, predictedX)
+    }
+
+    /// The system cancelled the drag (for example a scroll took the touch).
+    @objc public func reportHorizontalDragCancelled() {
+        guard horizontalDragActive else { return }
+        horizontalDragActive = false
+        dragCancelledHandler?()
     }
 
     /// Scrolls the enclosing Scroll or List to the descendant whose automation id
