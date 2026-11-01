@@ -345,6 +345,36 @@ interface MSUNode
     [Export("placeholderColorDarkHex")]
     string PlaceholderColorDarkHex { get; set; }
 
+    [Export("speechLanguage")]
+    string SpeechLanguage { get; set; }
+
+    [Export("doubleTapActionName")]
+    string DoubleTapActionName { get; set; }
+
+    [Export("scrollTargetsEnabled")]
+    bool ScrollTargetsEnabled { get; }
+
+    [Export("scrollTargetId")]
+    string ScrollTargetId { get; }
+
+    [Export("scrollTargetAnchor")]
+    string ScrollTargetAnchor { get; }
+
+    [Export("scrollTargetAnimated")]
+    bool ScrollTargetAnimated { get; }
+
+    [Export("scrollRequest")]
+    nint ScrollRequest { get; }
+
+    [Export("videoId")]
+    string VideoId { get; set; }
+
+    [Export("requestScrollTo:anchor:animated:")]
+    void RequestScrollTo(string target, string anchor, bool animated);
+
+    [Export("invokeDoubleTap")]
+    void InvokeDoubleTap();
+
     [Export("pathDepth")]
     nint PathDepth { get; }
 
@@ -434,6 +464,18 @@ interface MSUNode
 
     [Export("setViewportChangedHandler:")]
     void SetViewportChangedHandler(Action<double, nint> handler);
+
+    [Export("setDoubleTapHandler:")]
+    void SetDoubleTapHandler(Action handler);
+
+    [Export("setPhotoPickedHandler:")]
+    void SetPhotoPickedHandler(Action<NSData, string, string> handler);
+
+    [Export("setPhotoPickErrorHandler:")]
+    void SetPhotoPickErrorHandler(Action<string> handler);
+
+    [Export("setPhotoPickCancelledHandler:")]
+    void SetPhotoPickCancelledHandler(Action handler);
 }
 
 [BaseType(typeof(NSObject))]

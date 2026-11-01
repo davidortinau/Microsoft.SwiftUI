@@ -499,6 +499,42 @@ public static class SwiftUI
         return node;
     }
 
+    /// <summary>
+    /// Presents the system photo picker (PhotosUI <c>photosPicker(isPresented:selection:matching: .images)</c>)
+    /// over <paramref name="content"/> while <see cref="SwiftView.IsPresented"/> is true.
+    /// One chosen image's bytes arrive in <paramref name="onPicked"/>;
+    /// <paramref name="onCancelled"/> runs when the person closes the picker
+    /// without choosing; <paramref name="onError"/> receives <c>loadFailed</c>
+    /// or <c>tooLarge</c> (over 25 MB).
+    /// </summary>
+    public static SwiftView PhotoPicker(SwiftView content, Action<SwiftPickedPhoto> onPicked,
+                                        Action? onCancelled = null, Action<string>? onError = null)
+    {
+        SwiftView.ValidateChildren([content]);
+        ArgumentNullException.ThrowIfNull(onPicked);
+        var node = new SwiftView("photoPicker");
+        node.Attach(content);
+        node.SetPhotoPickerHandlers(onPicked, onCancelled, onError);
+        return node;
+    }
+
+    /// <summary>
+    /// An inline YouTube player for one video: a web view that loads only the
+    /// privacy-enhanced <c>https://www.youtube-nocookie.com/embed/{videoId}</c>
+    /// page, refuses every other main-frame navigation and pop-up window, and
+    /// keeps no website data. <paramref name="videoId"/> must be an 11-character
+    /// YouTube video id; URLs are refused.
+    /// </summary>
+    public static SwiftView YouTubePlayer(string videoId, string accessibilityLabel)
+    {
+        var id = SwiftView.ValidateYouTubeVideoId(videoId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(accessibilityLabel);
+        var node = new SwiftView("youTubePlayer");
+        node.Native.VideoId = id;
+        node.Native.AccessibilityLabelText = accessibilityLabel;
+        return node;
+    }
+
     public static SwiftView Alert(SwiftView content, string title, string message,
                                   params SwiftView[] actions) =>
         PresentWithActions("alert", content, title, message, actions);

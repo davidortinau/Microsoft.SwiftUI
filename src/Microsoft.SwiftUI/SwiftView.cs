@@ -30,6 +30,10 @@ public sealed class SwiftView : IDisposable
     private Action<string>? _fileImportErrorHandler;
     private Action? _fileImportCancelledHandler;
     private Action<double, nint>? _viewportChangedHandler;
+    private Action? _doubleTapHandler;
+    private Action<NSData, string, string>? _photoPickedHandler;
+    private Action<string>? _photoPickErrorHandler;
+    private Action? _photoPickCancelledHandler;
     private readonly List<string> _navigationRoutes = [];
     private SwiftView? _parent;
     private NSObject? _activeHost;
@@ -314,6 +318,105 @@ public sealed class SwiftView : IDisposable
         if (_nativeHandlersActive)
             _native.SetViewportChangedHandler(_viewportChangedHandler);
         return this;
+    }
+
+    /// <summary>
+    /// Sets the language VoiceOver speaks this Text or Button label in (the
+    /// <c>accessibilitySpeechLanguage</c> attributed-string attribute), for
+    /// example <c>"ko-KR"</c>, independent of the environment locale. On a
+    /// Button it applies to its title or its accessibility label. Null or empty
+    /// restores the system language. Unset by default.
+    /// </summary>
+    public SwiftView WithSpeechLanguage(string? languageTag)
+    {
+        RequireActive();
+        if (Kind is not ("text" or "button"))
+            throw new InvalidOperationException($"Expected a text or button node, not {Kind}.");
+        _native.SpeechLanguage = string.IsNullOrEmpty(languageTag) ? "" : ValidateLanguageTag(languageTag);
+        return this;
+    }
+
+    public string SpeechLanguage
+    {
+        get { RequireActive(); return _native.SpeechLanguage; }
+    }
+
+    /// <summary>
+    /// Runs <paramref name="handler"/> on a double tap (SwiftUI
+    /// <c>TapGesture(count: 2)</c> as a simultaneous gesture), so a Button keeps
+    /// its immediate single-tap action. A non-empty
+    /// <paramref name="accessibilityActionName"/> also exposes the handler as a
+    /// named accessibility action, which VoiceOver and automation can invoke.
+    /// A disabled view ignores the gesture.
+    /// </summary>
+    public SwiftView OnDoubleTap(Action handler, string? accessibilityActionName = null)
+    {
+        RequireActive();
+        ArgumentNullException.ThrowIfNull(handler);
+        if (accessibilityActionName is not null && string.IsNullOrWhiteSpace(accessibilityActionName))
+            throw new ArgumentException("Use null for no accessibility action, or a visible action name.",
+                                        nameof(accessibilityActionName));
+        _native.DoubleTapActionName = accessibilityActionName ?? "";
+        if (_nativeHandlersActive)
+            _native.SetDoubleTapHandler(handler);
+        _doubleTapHandler = handler;
+        return this;
+    }
+
+    /// <summary>Runs the double-tap handler as the gesture would (for tests and automation).</summary>
+    public void InvokeDoubleTap()
+    {
+        RequireActive();
+        if (_doubleTapHandler is null)
+            throw new InvalidOperationException("This view has no double-tap handler.");
+        if (!_nativeHandlersActive)
+            throw new InvalidOperationException("A detached view cannot invoke its double tap until reparented.");
+        _native.InvokeDoubleTap();
+    }
+
+    /// <summary>
+    /// Scrolls this Scroll or List so the descendant with accessibility identifier
+    /// <paramref name="accessibilityIdentifier"/> is at <paramref name="anchor"/>
+    /// (SwiftUI <c>ScrollViewReader</c> and <c>ScrollViewProxy.scrollTo(_:anchor:)</c>).
+    /// Once requested, descendant identifiers in this scroll also become SwiftUI
+    /// identities. A scroll mounted with a request applies it without animation;
+    /// later requests animate when <paramref name="animated"/> is true. Scrolls
+    /// that never call this are unchanged.
+    /// </summary>
+    public SwiftView ScrollTo(string accessibilityIdentifier,
+                              SwiftScrollAnchor anchor = SwiftScrollAnchor.Center,
+                              bool animated = true)
+    {
+        RequireActive();
+        if (Kind is not ("scroll" or "list"))
+            throw new InvalidOperationException($"Expected a scroll or list node, not {Kind}.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(accessibilityIdentifier);
+        if (!Enum.IsDefined(anchor))
+            throw new ArgumentOutOfRangeException(nameof(anchor));
+        _native.RequestScrollTo(accessibilityIdentifier, anchor switch
+        {
+            SwiftScrollAnchor.Top => "top",
+            SwiftScrollAnchor.Bottom => "bottom",
+            _ => "center"
+        }, animated);
+        return this;
+    }
+
+    /// <summary>The identifier of the latest <see cref="ScrollTo"/> request, or empty.</summary>
+    public string ScrollTargetIdentifier
+    {
+        get { RequireActive(); return _native.ScrollTargetId; }
+    }
+
+    /// <summary>The 11-character YouTube video id a YouTube player shows.</summary>
+    public string VideoId
+    {
+        get { RequireKind("youTubePlayer"); return _native.VideoId; }
+        set
+        {
+            RequireKind("youTubePlayer");
+            _native.VideoId = ValidateYouTubeVideoId(value);
+        }
     }
 
     public SwiftView WithNavigationTitle(string title)
@@ -1042,6 +1145,47 @@ public sealed class SwiftView : IDisposable
         }
     }
 
+    internal void SetPhotoPickerHandlers(Action<SwiftPickedPhoto> picked, Action? cancelled,
+                                         Action<string>? error)
+    {
+        RequireKind("photoPicker");
+        ArgumentNullException.ThrowIfNull(picked);
+        _photoPickedHandler = (data, mimeType, typeIdentifier) =>
+            picked(new SwiftPickedPhoto(data.ToArray(), mimeType, typeIdentifier));
+        _photoPickCancelledHandler = cancelled;
+        _photoPickErrorHandler = error;
+        if (_nativeHandlersActive)
+        {
+            _native.SetPhotoPickedHandler(_photoPickedHandler);
+            if (cancelled is not null)
+                _native.SetPhotoPickCancelledHandler(cancelled);
+            if (error is not null)
+                _native.SetPhotoPickErrorHandler(error);
+        }
+    }
+
+    /// <summary>A BCP 47 tag such as <c>ko</c>, <c>ko-KR</c> or <c>zh-Hant-TW</c>.</summary>
+    internal static string ValidateLanguageTag(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        var parts = value.Split('-');
+        var valid = value.Length <= 35 && parts[0].Length is >= 2 and <= 3
+            && parts[0].All(char.IsAsciiLetter)
+            && parts.Skip(1).All(part => part.Length is >= 1 and <= 8 && part.All(char.IsAsciiLetterOrDigit));
+        if (!valid)
+            throw new ArgumentException("Expected a BCP 47 language tag such as ko-KR.", nameof(value));
+        return value;
+    }
+
+    /// <summary>A YouTube video id: exactly 11 characters of A-Z, a-z, 0-9, '-' or '_'. URLs are refused.</summary>
+    internal static string ValidateYouTubeVideoId(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        if (value.Length != 11 || !value.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_'))
+            throw new ArgumentException("Expected an 11-character YouTube video id, not a URL.", nameof(value));
+        return value;
+    }
+
     internal static void ValidateChildren(IReadOnlyList<SwiftView> children)
     {
         RequireMainThread();
@@ -1131,6 +1275,10 @@ public sealed class SwiftView : IDisposable
         _fileImportErrorHandler = null;
         _fileImportCancelledHandler = null;
         _viewportChangedHandler = null;
+        _doubleTapHandler = null;
+        _photoPickedHandler = null;
+        _photoPickErrorHandler = null;
+        _photoPickCancelledHandler = null;
         _navigationRoutes.Clear();
         _children.Clear();
         _disposed = true;
@@ -1173,6 +1321,10 @@ public sealed class SwiftView : IDisposable
             if (_fileImportErrorHandler is not null) _native.SetFileImportErrorHandler(_fileImportErrorHandler);
             if (_fileImportCancelledHandler is not null) _native.SetFileImportCancelledHandler(_fileImportCancelledHandler);
             if (_viewportChangedHandler is not null) _native.SetViewportChangedHandler(_viewportChangedHandler);
+            if (_doubleTapHandler is not null) _native.SetDoubleTapHandler(_doubleTapHandler);
+            if (_photoPickedHandler is not null) _native.SetPhotoPickedHandler(_photoPickedHandler);
+            if (_photoPickErrorHandler is not null) _native.SetPhotoPickErrorHandler(_photoPickErrorHandler);
+            if (_photoPickCancelledHandler is not null) _native.SetPhotoPickCancelledHandler(_photoPickCancelledHandler);
             _nativeHandlersActive = true;
         }
         foreach (var child in _children)
@@ -1211,7 +1363,7 @@ public sealed class SwiftView : IDisposable
     {
         RequireActive();
         if (Kind is not ("sheet" or "inspector" or "alert" or "confirmationDialog" or "fileImporter"
-            or "photoCover" or "quickSuggestions" or "starterOverlay" or "deleteConfirmation"))
+            or "photoPicker" or "photoCover" or "quickSuggestions" or "starterOverlay" or "deleteConfirmation"))
             throw new InvalidOperationException($"Expected a presented view, not {Kind}.");
     }
 

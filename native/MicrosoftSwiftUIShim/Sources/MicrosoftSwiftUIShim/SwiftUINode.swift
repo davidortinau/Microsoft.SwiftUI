@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import ImageIO
+import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -127,6 +128,24 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var nativeListRowDarkHex = "" { willSet { objectWillChange.send() } }
     @objc public var placeholderColorHex = "" { willSet { objectWillChange.send() } }
     @objc public var placeholderColorDarkHex = "" { willSet { objectWillChange.send() } }
+    /// BCP 47 tag VoiceOver uses to speak this Text or Button label; empty keeps the system language.
+    @objc public var speechLanguage = "" { willSet { objectWillChange.send() } }
+    /// Accessibility action name that also exposes the double-tap handler to assistive technology.
+    @objc public var doubleTapActionName = "" { willSet { objectWillChange.send() } }
+    /// Scroll or List: descendants with an automation id become scrollTo targets.
+    @objc public private(set) var scrollTargetsEnabled = false { willSet { objectWillChange.send() } }
+    @objc public private(set) var scrollTargetId = ""
+    @objc public private(set) var scrollTargetAnchor = "center"
+    @objc public private(set) var scrollTargetAnimated = true
+    @objc public private(set) var scrollRequest = 0 { willSet { objectWillChange.send() } }
+    /// YouTube player: an 11-character video id, never a URL.
+    @objc public var videoId: String = "" {
+        willSet {
+            precondition(newValue.isEmpty || msuIsYouTubeVideoId(newValue),
+                         "Invalid YouTube video id")
+            objectWillChange.send()
+        }
+    }
     public private(set) var children: [MSUNode] = [] { willSet { objectWillChange.send() } }
     private var path: [String] = [] { willSet { objectWillChange.send() } }
     @objc public var pathDepth: Int { path.count }
@@ -152,6 +171,11 @@ public final class MSUNode: NSObject, ObservableObject {
     var fileImportErrorHandler: ((String) -> Void)?
     var fileImportCancelledHandler: (() -> Void)?
     var viewportChangedHandler: ((Double, Int) -> Void)?
+    var doubleTapHandler: (() -> Void)?
+    var photoPickedHandler: ((Data, String, String) -> Void)?
+    var photoPickErrorHandler: ((String) -> Void)?
+    var photoPickCancelledHandler: (() -> Void)?
+    private(set) var photoPickPending = false
     private var lastViewport: (width: Double, dynamicTypeSize: Int)?
     private(set) var decodedPhoto: CGImage? { willSet { objectWillChange.send() } }
     private var photoWasReported = false
@@ -166,7 +190,7 @@ public final class MSUNode: NSObject, ObservableObject {
             "confirmationDialog", "grid", "horizontalGrid", "fileImporter", "toolbar",
             "progress", "bottomInset", "circle", "divider", "indeterminateProgress",
             "photo", "zoomPhoto", "photoCover", "quickSuggestions",
-            "starterOverlay", "deleteConfirmation"
+            "starterOverlay", "deleteConfirmation", "photoPicker", "youTubePlayer"
         ].contains(kind), "Unsupported SwiftUI node kind: \(kind)")
         self.kind = kind
         super.init()
@@ -246,7 +270,97 @@ public final class MSUNode: NSObject, ObservableObject {
         fileImportErrorHandler = nil
         fileImportCancelledHandler = nil
         viewportChangedHandler = nil
+        doubleTapHandler = nil
+        photoPickedHandler = nil
+        photoPickErrorHandler = nil
+        photoPickCancelledHandler = nil
         lastViewport = nil
+    }
+
+    @objc(setDoubleTapHandler:)
+    public func setDoubleTapHandler(_ handler: @escaping @convention(block) () -> Void) {
+        // The gesture is attached only while a handler exists.
+        objectWillChange.send()
+        doubleTapHandler = handler
+    }
+
+    @objc public func invokeDoubleTap() {
+        if isEnabled { doubleTapHandler?() }
+    }
+
+    /// Scrolls the enclosing Scroll or List to the descendant whose automation id
+    /// matches, with SwiftUI ScrollViewProxy.scrollTo(_:anchor:). A newly mounted
+    /// scroll applies the latest request without animation.
+    @objc(requestScrollTo:anchor:animated:)
+    public func requestScroll(to target: String, anchor: String, animated: Bool) {
+        precondition(kind == "scroll" || kind == "list", "Only a Scroll or List can scroll to a target")
+        precondition(!target.isEmpty, "A scroll target needs an automation id")
+        precondition(["top", "center", "bottom"].contains(anchor), "Unsupported scroll anchor")
+        scrollTargetsEnabled = true
+        scrollTargetId = target
+        scrollTargetAnchor = anchor
+        scrollTargetAnimated = animated
+        scrollRequest += 1
+    }
+
+    @objc(setPhotoPickedHandler:)
+    public func setPhotoPickedHandler(_ handler: @escaping @convention(block) (Data, String, String) -> Void) {
+        photoPickedHandler = handler
+    }
+
+    @objc(setPhotoPickErrorHandler:)
+    public func setPhotoPickErrorHandler(_ handler: @escaping @convention(block) (String) -> Void) {
+        photoPickErrorHandler = handler
+    }
+
+    @objc(setPhotoPickCancelledHandler:)
+    public func setPhotoPickCancelledHandler(_ handler: @escaping @convention(block) () -> Void) {
+        photoPickCancelledHandler = handler
+    }
+
+    static let maximumPickedPhotoBytes = 25 * 1_048_576
+
+    /// SwiftUI writes the binding false both when the person cancels and when
+    /// a pick completes; a pick sets the selection in the same turn, so a close
+    /// with no pick pending on the next turn is a cancellation.
+    func applyPhotoPickerPresentation(_ next: Bool) {
+        let closing = isPresented && !next
+        isPresented = next
+        guard closing else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.photoPickPending else { return }
+            self.photoPickCancelledHandler?()
+        }
+    }
+
+    func receivePickedPhoto(_ item: PhotosPickerItem) {
+        photoPickPending = true
+        let type = item.supportedContentTypes.first(where: { $0.conforms(to: .image) })
+            ?? item.supportedContentTypes.first
+        item.loadTransferable(type: Data.self) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let data):
+                    self?.completePhotoPick(data: data, type: type)
+                case .failure:
+                    self?.completePhotoPick(data: nil, type: type)
+                }
+            }
+        }
+    }
+
+    func completePhotoPick(data: Data?, type: UTType?) {
+        photoPickPending = false
+        guard let data, !data.isEmpty else {
+            photoPickErrorHandler?("loadFailed")
+            return
+        }
+        guard data.count <= MSUNode.maximumPickedPhotoBytes else {
+            photoPickErrorHandler?("tooLarge")
+            return
+        }
+        photoPickedHandler?(data, type?.preferredMIMEType ?? "application/octet-stream",
+                            type?.identifier ?? UTType.image.identifier)
     }
 
     @objc(setTapHandler:)
@@ -1005,8 +1119,12 @@ private struct ScrollNodeView: View {
         }
     }
 
-    @ViewBuilder
     var body: some View {
+        ScrollTargetReader(node: node) { scrollView }
+    }
+
+    @ViewBuilder
+    private var scrollView: some View {
         if node.centerWhenShort {
             if #available(iOS 18.0, macOS 15.0, *) {
                 ScrollView { rows }
@@ -1105,7 +1223,7 @@ private struct NativeCollectionNodeView: View {
                 }
             })
         } else {
-            canvas(List {
+            ScrollTargetReader(node: node) { canvas(List {
                 ForEach(node.children, id: \.id) { child in
                     if node.nativeListRowHex.isEmpty {
                         SwiftUINodeView(node: child)
@@ -1116,7 +1234,7 @@ private struct NativeCollectionNodeView: View {
                                                                 scheme: colorScheme))
                     }
                 }
-            })
+            }) }
         }
     }
 }
@@ -1564,10 +1682,11 @@ struct SwiftUINodeView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.fillsMSUButtonGroupWidth) private var fillsButtonGroupWidth
+    @Environment(\.msuScrollTargetsEnabled) private var scrollTargetsEnabled
     @ScaledMetric(relativeTo: .body) private var bodyFontScale: CGFloat = 1
 
     private var textContent: Text {
-        Text(node.text).underline(node.isUnderlined)
+        msuSpeechText(node.text, language: node.speechLanguage).underline(node.isUnderlined)
             .strikethrough(node.isStrikethrough)
     }
 
@@ -1581,7 +1700,14 @@ struct SwiftUINodeView: View {
             .accessibilityIdentifier(node.automationId))
     }
 
+    // A separate property keeps the iOS type checker from failing with
+    // "opaque type defined in terms of itself" on one long modifier chain.
     var body: some View {
+        decorated.modifier(NodeBehaviorModifier(node: node, scrollTargetsEnabled: scrollTargetsEnabled,
+                                                ownsAccessibilityLabel: ownsAccessibilityLabel))
+    }
+
+    private var decorated: some View {
         requestingScheme(identified(accessible(titled(tabBarVisibility(
             reportingViewport(styledContent(content)))))))
             .disabled(!node.isEnabled)
@@ -1777,11 +1903,17 @@ struct SwiftUINodeView: View {
     @ViewBuilder
     private func accessible<V: View>(_ view: V) -> some View {
         // These kinds apply their own label inside content; a second
-        // .accessibilityLabel makes SwiftUI read it twice.
-        if node.accessibilityLabelText.isEmpty || node.kind == "textEditor" ||
-            node.kind == "slider" || node.kind == "progress" ||
-            node.kind == "indeterminateProgress" { view }
+        // .accessibilityLabel makes SwiftUI read it twice. A label with a
+        // speech language is applied by NodeBehaviorModifier instead.
+        if node.accessibilityLabelText.isEmpty || ownsAccessibilityLabel ||
+            !node.speechLanguage.isEmpty { view }
         else { view.accessibilityLabel(node.accessibilityLabelText) }
+    }
+
+    /// These kinds apply their own label inside content.
+    private var ownsAccessibilityLabel: Bool {
+        node.kind == "textEditor" || node.kind == "slider" || node.kind == "progress" ||
+            node.kind == "indeterminateProgress"
     }
 
     private var ellipticalButtonShape: ButtonEllipticalCornerShape? {
@@ -1816,7 +1948,8 @@ struct SwiftUINodeView: View {
                 buttonLabel(SwiftUINodeView(node: label), ellipticalShape: ellipse)
                     .accessibilityElement(children: .combine)
             } else {
-                buttonLabel(Text(node.text), ellipticalShape: ellipse)
+                buttonLabel(msuSpeechText(node.text, language: node.speechLanguage),
+                            ellipticalShape: ellipse)
             }
         }
         if node.hasButtonAppearance {
@@ -2222,6 +2355,23 @@ struct SwiftUINodeView: View {
                             }
                         },
                         onCancellation: { node.fileImportCancelledHandler?() })
+            }
+        case "photoPicker":
+            if let root = node.children.first {
+                SwiftUINodeView(node: root)
+                    .photosPicker(isPresented: Binding(
+                        get: { node.isPresented },
+                        set: { node.applyPhotoPickerPresentation($0) }
+                    ), selection: Binding<PhotosPickerItem?>(
+                        get: { nil },
+                        set: { item in if let item { node.receivePickedPhoto(item) } }
+                    ), matching: .images)
+            }
+        case "youTubePlayer":
+            if !node.videoId.isEmpty {
+                MSUYouTubePlayerView(videoId: node.videoId)
+                    .aspectRatio(16.0 / 9.0, contentMode: .fit)
+                    .accessibilityIdentifier(node.automationId)
             }
         default:
             EmptyView()

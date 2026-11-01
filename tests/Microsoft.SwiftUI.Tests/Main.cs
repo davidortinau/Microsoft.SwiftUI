@@ -849,6 +849,107 @@ var cases = new (string Name, Action Test)[]
         using var host = SwiftUIHost.CreateView(root);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("speech language is opt-in on Text and Button and rejects malformed tags", () =>
+    {
+        using var word = Views.Text("학교");
+        Assert(word.SpeechLanguage == "");
+        Assert(ReferenceEquals(word.WithSpeechLanguage("ko-KR"), word) && word.SpeechLanguage == "ko-KR");
+        word.WithSpeechLanguage("zh-Hant-TW").WithSpeechLanguage(null);
+        Assert(word.SpeechLanguage == "");
+        using var button = Views.Button("학교", () => { })
+            .WithAccessibilityLabel("학교, In your vocab")
+            .WithSpeechLanguage("ko");
+        Assert(button.SpeechLanguage == "ko");
+        Throws<ArgumentException>(() => word.WithSpeechLanguage("Korean language"));
+        Throws<ArgumentException>(() => word.WithSpeechLanguage("k"));
+        Throws<ArgumentException>(() => word.WithSpeechLanguage("ko--KR"));
+        Throws<ArgumentException>(() => word.WithSpeechLanguage("ko_KR"));
+        Throws<InvalidOperationException>(() => Views.VStack().WithSpeechLanguage("ko-KR"));
+        using var root = Views.VStack(Views.Text("한국어").WithSpeechLanguage("ko-KR"));
+        using var host = SwiftUIHost.CreateView(root);
+        SwiftUIHost.DetachView(root, host);
+    }),
+    ("double tap keeps the single tap, honors disabled and survives reparenting", () =>
+    {
+        var taps = 0;
+        var doubleTaps = 0;
+        var button = Views.Button("Sentence", () => taps++)
+            .OnDoubleTap(() => doubleTaps++, "Play from this sentence");
+        using var root = Views.VStack(Views.HStack(button));
+        button.InvokeDoubleTap();
+        button.InvokeAction();
+        Assert(taps == 1 && doubleTaps == 1);
+        button.IsEnabled = false;
+        button.InvokeDoubleTap();
+        Assert(doubleTaps == 1);
+        button.IsEnabled = true;
+        var row = root.Children[0];
+        root.RemoveAt(0);
+        Throws<InvalidOperationException>(() => button.InvokeDoubleTap());
+        root.Add(row);
+        button.InvokeDoubleTap();
+        Assert(doubleTaps == 2);
+        Throws<InvalidOperationException>(() => Views.Text("No handler").InvokeDoubleTap());
+        Throws<ArgumentException>(() => Views.Text("Blank").OnDoubleTap(() => { }, " "));
+        Throws<ArgumentNullException>(() => Views.Text("Null").OnDoubleTap(null!));
+        using var host = SwiftUIHost.CreateView(root);
+        SwiftUIHost.DetachView(root, host);
+    }),
+    ("scroll to a target is opt-in on Scroll and List and validates its anchor", () =>
+    {
+        using var scroll = Views.Scroll(Views.Text("One").WithAccessibilityIdentifier("s.1"),
+                                        Views.Text("Two").WithAccessibilityIdentifier("s.2"));
+        Assert(scroll.ScrollTargetIdentifier == "");
+        Assert(ReferenceEquals(scroll.ScrollTo("s.2"), scroll) && scroll.ScrollTargetIdentifier == "s.2");
+        scroll.ScrollTo("s.1", SwiftScrollAnchor.Top, animated: false)
+            .ScrollTo("s.1", SwiftScrollAnchor.Bottom);
+        using var list = Views.List(Views.Text("Row").WithAccessibilityIdentifier("r.1")).ScrollTo("r.1");
+        Throws<InvalidOperationException>(() => Views.VStack().ScrollTo("x"));
+        Throws<ArgumentException>(() => scroll.ScrollTo(" "));
+        Throws<ArgumentOutOfRangeException>(() => scroll.ScrollTo("s.1", (SwiftScrollAnchor)42));
+        using var root = Views.VStack(Views.Scroll(Views.Text("Hosted").WithAccessibilityIdentifier("h"))
+            .ScrollTo("h"));
+        using var host = SwiftUIHost.CreateView(root);
+        SwiftUIHost.DetachView(root, host);
+    }),
+    ("photo picker presents over content and requires a picked-photo handler", () =>
+    {
+        SwiftPickedPhoto? picked = null;
+        using var picker = Views.PhotoPicker(Views.Button("Choose photo", () => { }),
+            photo => picked = photo, () => { }, _ => { });
+        Assert(picker.Kind == "photoPicker" && !picker.IsPresented && picked is null);
+        picker.IsPresented = true;
+        Assert(picker.IsPresented);
+        picker.IsPresented = false;
+        Throws<ArgumentNullException>(() => Views.PhotoPicker(Views.Text("x"), null!));
+        var owned = Views.Text("Owned");
+        using var parent = Views.VStack(owned);
+        Throws<InvalidOperationException>(() => Views.PhotoPicker(owned, _ => { }));
+        using var root = Views.VStack(Views.PhotoPicker(Views.Text("Hosted"), _ => { }));
+        using var host = SwiftUIHost.CreateView(root);
+        SwiftUIHost.DetachView(root, host);
+    }),
+    ("YouTube player accepts only an 11-character video id, never a URL", () =>
+    {
+        using var player = Views.YouTubePlayer("dQw4w9WgXcQ", "Lesson video")
+            .WithAccessibilityIdentifier("video.player");
+        Assert(player.Kind == "youTubePlayer" && player.VideoId == "dQw4w9WgXcQ");
+        player.VideoId = "a-_0123456Z";
+        Assert(player.VideoId == "a-_0123456Z");
+        foreach (var invalid in new[] { "", "dQw4w9WgXc", "dQw4w9WgXcQQ",
+                     "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "dQw4w9WgX/Q", "dQw4w9WgX Q",
+                     "dQw4w9WgXcé" })
+        {
+            Throws<ArgumentException>(() => Views.YouTubePlayer(invalid, "Video"));
+            Throws<ArgumentException>(() => player.VideoId = invalid);
+        }
+        Assert(player.VideoId == "a-_0123456Z");
+        Throws<ArgumentException>(() => Views.YouTubePlayer("dQw4w9WgXcQ", " "));
+        Throws<InvalidOperationException>(() => _ = Views.Text("x").VideoId);
+        using var root = Views.VStack(Views.YouTubePlayer("dQw4w9WgXcQ", "Hosted video"));
+        using var host = SwiftUIHost.CreateView(root);
+        SwiftUIHost.DetachView(root, host);
+    }),
     ("bottom scroll anchor is opt-in and requires a Scroll", () =>
     {
         using var root = Views.Scroll(Views.Text("First"), Views.Text("Newest"))

@@ -85,6 +85,21 @@ public sealed record SwiftPickerOption(string Value, string Title);
 
 public sealed record SwiftImportedFile(byte[] Data, string Name, string MimeType);
 
+/// <summary>Where a scrolled-to view lands in the visible area (SwiftUI <c>UnitPoint</c>).</summary>
+public enum SwiftScrollAnchor
+{
+    Center = 0,
+    Top = 1,
+    Bottom = 2
+}
+
+/// <summary>
+/// One image chosen in the system photo picker: its bytes, MIME type (for
+/// example <c>image/jpeg</c>) and uniform type identifier (for example
+/// <c>public.jpeg</c>).
+/// </summary>
+public sealed record SwiftPickedPhoto(byte[] Data, string MimeType, string TypeIdentifier);
+
 public static class SwiftUIApplication
 {
     private static SwiftView? _runningRoot;
