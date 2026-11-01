@@ -315,6 +315,9 @@ interface MSUNode
     [Export("centerWhenShort")]
     bool CenterWhenShort { get; set; }
 
+    [Export("anchorsToBottom")]
+    bool AnchorsToBottom { get; set; }
+
     [Export("nativeListCanvasHex")]
     string NativeListCanvasHex { get; set; }
 

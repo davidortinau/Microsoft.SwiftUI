@@ -772,6 +772,19 @@ public sealed class SwiftView : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Opens a Scroll at its end and keeps the end visible when its content or
+    /// container grows, as a chat transcript does (SwiftUI
+    /// <c>defaultScrollAnchor(.bottom)</c> for the initial-offset and size-change roles).
+    /// Short content keeps its alignment. Off by default.
+    /// </summary>
+    public SwiftView WithScrollAnchoredToBottom(bool enabled = true)
+    {
+        RequireKind("scroll");
+        _native.AnchorsToBottom = enabled;
+        return this;
+    }
+
     public SwiftView WithMinimumHeight(double points)
     {
         RequireActive();

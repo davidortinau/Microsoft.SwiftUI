@@ -823,6 +823,16 @@ var cases = new (string Name, Action Test)[]
         using var host = SwiftUIHost.CreateView(root);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("bottom scroll anchor is opt-in and requires a Scroll", () =>
+    {
+        using var root = Views.Scroll(Views.Text("First"), Views.Text("Newest"))
+            .WithScrollAnchoredToBottom();
+        root.WithScrollAnchoredToBottom(false).WithScrollAnchoredToBottom()
+            .WithCenterWhenShort();
+        Throws<InvalidOperationException>(() => Views.VStack().WithScrollAnchoredToBottom());
+        using var host = SwiftUIHost.CreateView(root);
+        SwiftUIHost.DetachView(root, host);
+    }),
     ("real secure text and editor fields accept paired prompt colors", () =>
     {
         using var secure = Views.SecureField("Password")
