@@ -2263,8 +2263,11 @@ private struct InspectorCompactDetent: ViewModifier {
 
     func body(content: Content) -> some View {
         if fraction > 0 {
+            // The selection moves an already-presented sheet when the fraction
+            // changes; a new detent set alone is not applied after presentation.
+            let detent = PresentationDetent.fraction(fraction)
             content
-                .presentationDetents([.fraction(fraction)])
+                .presentationDetents([detent], selection: .constant(detent))
                 .presentationBackgroundInteraction(.disabled)
         } else {
             content
