@@ -556,12 +556,38 @@ public sealed class SwiftView : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Sets the sheet height as a fraction of the screen. On an Inspector it applies
+    /// only when SwiftUI presents the inspector as a sheet (compact width).
+    /// </summary>
     public SwiftView WithSheetDetentFraction(double fraction)
     {
-        RequireKind("sheet");
+        RequireActive();
+        if (Kind is not ("sheet" or "inspector"))
+            throw new InvalidOperationException($"Expected a sheet or inspector node, not {Kind}.");
         if (!double.IsFinite(fraction) || fraction <= 0 || fraction > 1)
             throw new ArgumentOutOfRangeException(nameof(fraction));
         _native.SheetDetentFraction = fraction;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the inspector column width (SwiftUI <c>inspectorColumnWidth(min:ideal:max:)</c>)
+    /// used in a regular horizontal size class. Omitted bounds stay system-defined;
+    /// equal bounds fix the width. Unset by default.
+    /// </summary>
+    public SwiftView WithInspectorColumnWidth(double ideal, double? min = null, double? max = null)
+    {
+        RequireKind("inspector");
+        if (!double.IsFinite(ideal) || ideal <= 0)
+            throw new ArgumentOutOfRangeException(nameof(ideal));
+        if (min is { } low && (!double.IsFinite(low) || low <= 0 || low > ideal))
+            throw new ArgumentOutOfRangeException(nameof(min));
+        if (max is { } high && (!double.IsFinite(high) || high < ideal))
+            throw new ArgumentOutOfRangeException(nameof(max));
+        _native.InspectorMinWidth = min ?? 0;
+        _native.InspectorMaxWidth = max ?? 0;
+        _native.InspectorIdealWidth = ideal;
         return this;
     }
 
@@ -1184,7 +1210,7 @@ public sealed class SwiftView : IDisposable
     private void RequirePresentation()
     {
         RequireActive();
-        if (Kind is not ("sheet" or "alert" or "confirmationDialog" or "fileImporter"
+        if (Kind is not ("sheet" or "inspector" or "alert" or "confirmationDialog" or "fileImporter"
             or "photoCover" or "quickSuggestions" or "starterOverlay" or "deleteConfirmation"))
             throw new InvalidOperationException($"Expected a presented view, not {Kind}.");
     }

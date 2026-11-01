@@ -1267,6 +1267,54 @@ final class NodeTests: XCTestCase {
         withExtendedLifetime(subscription) {}
     }
 
+    func testInspectorDefaultsLeaveWidthsUnsetAndRetainBothChildren() {
+        let inspector = MSUBridge.makeNode(kind: "inspector")
+        XCTAssertFalse(inspector.isPresented)
+        XCTAssertEqual(inspector.inspectorMinWidth, 0)
+        XCTAssertEqual(inspector.inspectorIdealWidth, 0)
+        XCTAssertEqual(inspector.inspectorMaxWidth, 0)
+        XCTAssertEqual(inspector.sheetDetentFraction, 0)
+        let page = MSUBridge.makeNode(kind: "tabView")
+        let panel = MSUBridge.makeNode(kind: "navigationStack")
+        inspector.insertChild(page, at: 0)
+        inspector.insertChild(panel, at: 1)
+        _ = SwiftUINodeView(node: inspector).body
+
+        var changes = 0
+        let observation = inspector.objectWillChange.sink { changes += 1 }
+        inspector.inspectorMinWidth = 320
+        inspector.inspectorIdealWidth = 360
+        inspector.inspectorMaxWidth = 520
+        inspector.sheetDetentFraction = 0.6
+        inspector.isPresented = true
+        XCTAssertEqual(changes, 5)
+        _ = SwiftUINodeView(node: inspector).body
+        XCTAssertEqual(inspector.children.map(\.id), [page.id, panel.id])
+        observation.cancel()
+    }
+
+    func testInspectorReportsOnlyAPersonClosingIt() {
+        let inspector = MSUBridge.makeNode(kind: "inspector")
+        inspector.insertChild(MSUBridge.makeNode(kind: "text"), at: 0)
+        inspector.insertChild(MSUBridge.makeNode(kind: "text"), at: 1)
+        var dismissals = 0
+        inspector.setDismissedHandler { dismissals += 1 }
+
+        inspector.applyInspectorPresentation(true)
+        XCTAssertTrue(inspector.isPresented)
+        XCTAssertEqual(dismissals, 0)
+        inspector.applyInspectorPresentation(false)
+        XCTAssertFalse(inspector.isPresented)
+        XCTAssertEqual(dismissals, 1)
+        // A repeated close write is not a second dismissal.
+        inspector.applyInspectorPresentation(false)
+        XCTAssertEqual(dismissals, 1)
+        // A programmatic close never reaches the binding.
+        inspector.isPresented = true
+        inspector.isPresented = false
+        XCTAssertEqual(dismissals, 1)
+    }
+
     func testSheetFullScreenPhotoAndRootBlockingStateRetainNodes() {
         let sheet = MSUBridge.makeNode(kind: "sheet")
         sheet.sheetDetentFraction = 0.7
