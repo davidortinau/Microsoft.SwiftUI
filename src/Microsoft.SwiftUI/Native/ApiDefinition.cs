@@ -300,6 +300,9 @@ interface MSUNode
     [Export("maxWidth")]
     double MaxWidth { get; set; }
 
+    [Export("fillsHeight")]
+    bool FillsHeight { get; set; }
+
     [Export("horizontalAlignment")]
     string HorizontalAlignment { get; set; }
 

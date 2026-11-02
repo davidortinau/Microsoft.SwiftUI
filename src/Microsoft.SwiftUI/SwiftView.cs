@@ -927,6 +927,23 @@ public sealed class SwiftView : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Lets this view take the full height its container proposes (SwiftUI
+    /// <c>frame(maxHeight: .infinity)</c>), so equal flexible siblings share a
+    /// bounded stack's height evenly. Content keeps the horizontal alignment set by
+    /// <see cref="WithFlexibleWidth"/> and is centered vertically. Off by default;
+    /// inside a Scroll the proposed height is the content's own.
+    /// </summary>
+    /// <summary>Whether <see cref="WithFlexibleHeight"/> is on.</summary>
+    public bool FillsHeight => _native.FillsHeight;
+
+    public SwiftView WithFlexibleHeight(bool enabled = true)
+    {
+        RequireActive();
+        _native.FillsHeight = enabled;
+        return this;
+    }
+
     public SwiftView WithRoundedSurface(string lightFillHex, string darkFillHex,
                                         double cornerRadius, string? lightBorderHex = null,
                                         string? darkBorderHex = null, double borderWidth = 0)

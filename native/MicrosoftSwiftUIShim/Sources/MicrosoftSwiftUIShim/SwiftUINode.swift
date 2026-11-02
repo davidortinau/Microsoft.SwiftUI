@@ -113,6 +113,8 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var shadowOffsetY = 0.0 { willSet { objectWillChange.send() } }
     @objc public var fillsWidth = false { willSet { objectWillChange.send() } }
     @objc public var maxWidth = 0.0 { willSet { objectWillChange.send() } }
+    /// Opt-in `frame(maxHeight: .infinity)`: the view takes the height its container proposes.
+    @objc public var fillsHeight = false { willSet { objectWillChange.send() } }
     @objc public var horizontalAlignment = "leading" { willSet { objectWillChange.send() } }
     @objc public var adaptiveStackBelowWidth = 0.0 { willSet { objectWillChange.send() } }
     @objc public var minimumHeight = 0.0 { willSet { objectWillChange.send() } }
@@ -1865,6 +1867,7 @@ struct SwiftUINodeView: View {
             .frame(minHeight: node.minimumHeight > 0 ? node.minimumHeight : nil)
             .frame(maxWidth: node.fillsWidth
                 ? node.maxWidth > 0 ? node.maxWidth : .infinity : nil,
+                   maxHeight: node.fillsHeight ? .infinity : nil,
                    alignment: horizontalAlignment)
 
         return surface(padded)

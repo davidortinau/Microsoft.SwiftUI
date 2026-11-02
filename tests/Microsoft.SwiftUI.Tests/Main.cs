@@ -895,6 +895,24 @@ var cases = new (string Name, Action Test)[]
         using var host = SwiftUIHost.CreateView(root);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("flexible height is opt-in, toggles off and rejects a disposed view", () =>
+    {
+        using var placeholder = Views.VStack();
+        using var tile = Views.Text("Tile");
+        Assert(!placeholder.FillsHeight && !tile.FillsHeight);
+        Assert(ReferenceEquals(tile.WithFlexibleHeight()
+            .WithFlexibleWidth(alignment: SwiftHorizontalAlignment.Center), tile));
+        Assert(tile.FillsHeight);
+        placeholder.WithFlexibleWidth().WithFlexibleHeight();
+        using var row = Views.HStack(tile, placeholder).WithFlexibleHeight();
+        using var host = SwiftUIHost.CreateView(row);
+        tile.WithFlexibleHeight(false);
+        Assert(!tile.FillsHeight && placeholder.FillsHeight && row.FillsHeight);
+        SwiftUIHost.DetachView(row, host);
+        var gone = Views.Text("Gone");
+        gone.Dispose();
+        Throws<ObjectDisposedException>(() => gone.WithFlexibleHeight());
+    }),
     ("horizontal drag reports changes and ends, keeps the tap, honors disabled and survives reparenting", () =>
     {
         var taps = 0;
