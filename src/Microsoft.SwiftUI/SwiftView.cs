@@ -547,6 +547,22 @@ public sealed class SwiftView : IDisposable
         return this;
     }
 
+    /// <summary>The announcement set by <see cref="WithAccessibilityAnnouncement"/>, or empty.</summary>
+    public string AccessibilityAnnouncement => _native.AccessibilityAnnouncement;
+
+    /// <summary>
+    /// Asks VoiceOver to announce <paramref name="text"/> when this view appears
+    /// and whenever the text changes (SwiftUI
+    /// <c>AccessibilityNotification.Announcement</c>), for a status message that
+    /// does not take focus, such as a toast. Empty (the default) announces nothing.
+    /// </summary>
+    public SwiftView WithAccessibilityAnnouncement(string text)
+    {
+        RequireActive();
+        _native.AccessibilityAnnouncement = text ?? throw new ArgumentNullException(nameof(text));
+        return this;
+    }
+
     public SwiftView WithPadding(double points)
     {
         RequireActive();

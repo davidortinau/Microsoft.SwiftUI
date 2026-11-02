@@ -115,6 +115,10 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var maxWidth = 0.0 { willSet { objectWillChange.send() } }
     /// Opt-in `frame(maxHeight: .infinity)`: the view takes the height its container proposes.
     @objc public var fillsHeight = false { willSet { objectWillChange.send() } }
+    /// Edge of an `overlay` node's second child: "bottom" (default) or "top".
+    @objc public var overlayEdge = "bottom" { willSet { objectWillChange.send() } }
+    /// Opt-in VoiceOver announcement posted when the view appears or this text changes.
+    @objc public var accessibilityAnnouncement = "" { willSet { objectWillChange.send() } }
     @objc public var horizontalAlignment = "leading" { willSet { objectWillChange.send() } }
     @objc public var adaptiveStackBelowWidth = 0.0 { willSet { objectWillChange.send() } }
     @objc public var minimumHeight = 0.0 { willSet { objectWillChange.send() } }
@@ -206,7 +210,8 @@ public final class MSUNode: NSObject, ObservableObject {
             "confirmationDialog", "grid", "horizontalGrid", "fileImporter", "toolbar",
             "progress", "bottomInset", "circle", "divider", "indeterminateProgress",
             "photo", "zoomPhoto", "photoCover", "quickSuggestions",
-            "starterOverlay", "deleteConfirmation", "photoPicker", "youTubePlayer"
+            "starterOverlay", "deleteConfirmation", "photoPicker", "youTubePlayer",
+            "overlay"
         ].contains(kind), "Unsupported SwiftUI node kind: \(kind)")
         self.kind = kind
         super.init()
@@ -1935,7 +1940,7 @@ struct SwiftUINodeView: View {
     private func identified<V: View>(_ view: V) -> some View {
         if node.automationId.isEmpty || node.kind == "textEditor" ||
             node.kind == "horizontalGrid" { view }
-        else if node.kind == "bottomInset" || node.kind == "hstack" ||
+        else if node.kind == "bottomInset" || node.kind == "overlay" || node.kind == "hstack" ||
                     node.kind == "vstack" || node.kind == "buttonGroup" ||
                     node.kind == "quickSuggestions" || node.kind == "starterOverlay" ||
                     node.kind == "deleteConfirmation" || node.kind == "photoCover" {
@@ -2185,6 +2190,10 @@ struct SwiftUINodeView: View {
             }
         case "scroll":
             ScrollNodeView(node: node)
+        case "overlay":
+            if node.children.count == 2 {
+                OverlayNodeView(node: node)
+            }
         case "bottomInset":
             if node.children.count == 2 {
                 SwiftUINodeView(node: node.children[0])
@@ -2497,3 +2506,18 @@ private struct InspectorCompactDetent: ViewModifier {
     }
 }
 #endif
+
+/// Content filling the proposed space with a second view layered over its top
+/// or bottom edge, inside the safe area (SwiftUI `overlay(alignment:)`). The
+/// layer does not change the content's layout; an empty layer shows nothing.
+struct OverlayNodeView: View {
+    @ObservedObject var node: MSUNode
+
+    var body: some View {
+        SwiftUINodeView(node: node.children[0])
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay(alignment: node.overlayEdge == "top" ? .top : .bottom) {
+                SwiftUINodeView(node: node.children[1])
+            }
+    }
+}

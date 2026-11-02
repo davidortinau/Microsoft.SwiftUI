@@ -85,6 +85,13 @@ public sealed record SwiftPickerOption(string Value, string Title);
 
 public sealed record SwiftImportedFile(byte[] Data, string Name, string MimeType);
 
+/// <summary>The edge an <see cref="SwiftUI.Overlay"/> layer is aligned to.</summary>
+public enum SwiftOverlayEdge
+{
+    Bottom = 0,
+    Top = 1
+}
+
 /// <summary>Where a scrolled-to view lands in the visible area (SwiftUI <c>UnitPoint</c>).</summary>
 public enum SwiftScrollAnchor
 {

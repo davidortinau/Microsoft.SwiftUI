@@ -913,6 +913,41 @@ var cases = new (string Name, Action Test)[]
         gone.Dispose();
         Throws<ObjectDisposedException>(() => gone.WithFlexibleHeight());
     }),
+    ("overlay layers a view over the content edge and accepts an empty layer", () =>
+    {
+        using var page = Views.VStack(Views.Text("Page"));
+        using var layer = Views.VStack();
+        using var overlay = Views.Overlay(page, layer).WithAccessibilityIdentifier("bridge.overlay");
+        Assert(overlay.Kind == "overlay" && overlay.Children.SequenceEqual([page, layer]));
+        using var host = SwiftUIHost.CreateView(overlay);
+        var toast = Views.Text("Saved").WithAccessibilityAnnouncement("Saved");
+        layer.Add(toast);
+        Assert(layer.Children.Count == 1 && toast.AccessibilityAnnouncement == "Saved");
+        layer.RemoveAt(0);
+        toast.Dispose();
+        Assert(layer.Children.Count == 0);
+        SwiftUIHost.DetachView(overlay, host);
+        using var topPage = Views.VStack();
+        using var topLayer = Views.VStack();
+        using var top = Views.Overlay(topPage, topLayer, SwiftOverlayEdge.Top);
+        Assert(top.Kind == "overlay");
+        Throws<ArgumentOutOfRangeException>(() =>
+            Views.Overlay(Views.VStack(), Views.VStack(), (SwiftOverlayEdge)7));
+        Throws<InvalidOperationException>(() => Views.Overlay(page, Views.VStack()));
+    }),
+    ("accessibility announcement is opt-in, updates and rejects null or a disposed view", () =>
+    {
+        using var text = Views.Text("Status");
+        Assert(text.AccessibilityAnnouncement == "");
+        Assert(ReferenceEquals(text.WithAccessibilityAnnouncement("Graded"), text));
+        Assert(text.AccessibilityAnnouncement == "Graded");
+        text.WithAccessibilityAnnouncement("");
+        Assert(text.AccessibilityAnnouncement == "");
+        Throws<ArgumentNullException>(() => text.WithAccessibilityAnnouncement(null!));
+        var gone = Views.Text("Gone");
+        gone.Dispose();
+        Throws<ObjectDisposedException>(() => gone.WithAccessibilityAnnouncement("x"));
+    }),
     ("horizontal drag reports changes and ends, keeps the tap, honors disabled and survives reparenting", () =>
     {
         var taps = 0;

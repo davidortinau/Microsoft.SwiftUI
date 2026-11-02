@@ -110,6 +110,29 @@ public static class SwiftUI
         return grid;
     }
 
+    /// <summary>
+    /// Lays <paramref name="layer"/> over the top or bottom edge of
+    /// <paramref name="content"/> inside the safe area (SwiftUI
+    /// <c>overlay(alignment:)</c>) without changing the content's layout, for
+    /// example a transient toast over a page. The content fills the space its
+    /// container proposes, centered as before; an empty layer shows nothing.
+    /// </summary>
+    public static SwiftView Overlay(SwiftView content, SwiftView layer,
+                                    SwiftOverlayEdge edge = SwiftOverlayEdge.Bottom)
+    {
+        SwiftView.ValidateChildren([content, layer]);
+        var overlay = new SwiftView("overlay");
+        overlay.Native.OverlayEdge = edge switch
+        {
+            SwiftOverlayEdge.Bottom => "bottom",
+            SwiftOverlayEdge.Top => "top",
+            _ => throw new ArgumentOutOfRangeException(nameof(edge))
+        };
+        overlay.Attach(content);
+        overlay.Attach(layer);
+        return overlay;
+    }
+
     public static SwiftView BottomInset(SwiftView scrollContent, SwiftView footer)
     {
         SwiftView.ValidateChildren([scrollContent, footer]);

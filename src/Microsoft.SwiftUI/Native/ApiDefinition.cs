@@ -303,6 +303,12 @@ interface MSUNode
     [Export("fillsHeight")]
     bool FillsHeight { get; set; }
 
+    [Export("overlayEdge")]
+    string OverlayEdge { get; set; }
+
+    [Export("accessibilityAnnouncement")]
+    string AccessibilityAnnouncement { get; set; }
+
     [Export("horizontalAlignment")]
     string HorizontalAlignment { get; set; }
 

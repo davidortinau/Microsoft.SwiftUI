@@ -99,7 +99,21 @@ struct NodeBehaviorModifier: ViewModifier {
     let ownsAccessibilityLabel: Bool
 
     func body(content: Content) -> some View {
-        targeted(transformed(dragged(doubleTapped(spoken(content)))))
+        announced(targeted(transformed(dragged(doubleTapped(spoken(content))))))
+    }
+
+    /// Posts the opt-in announcement once when the view appears and again when
+    /// its text changes; an empty text posts nothing (SwiftUI AccessibilityNotification).
+    @ViewBuilder
+    private func announced<V: View>(_ view: V) -> some View {
+        if node.accessibilityAnnouncement.isEmpty {
+            view
+        } else {
+            view.onAppear { msuPostAnnouncement(node.accessibilityAnnouncement) }
+                .onChange(of: node.accessibilityAnnouncement) { _, text in
+                    msuPostAnnouncement(text)
+                }
+        }
     }
 
     @ViewBuilder
@@ -193,4 +207,13 @@ struct HorizontalDragModifier: ViewModifier {
                 DispatchQueue.main.async { node.reportHorizontalDragCancelled() }
             }
     }
+}
+
+/// Announcements posted through `msuPostAnnouncement`, newest last (tests read it).
+@MainActor var msuPostedAnnouncements: [String] = []
+
+@MainActor func msuPostAnnouncement(_ text: String) {
+    guard !text.isEmpty else { return }
+    msuPostedAnnouncements.append(text)
+    AccessibilityNotification.Announcement(text).post()
 }
