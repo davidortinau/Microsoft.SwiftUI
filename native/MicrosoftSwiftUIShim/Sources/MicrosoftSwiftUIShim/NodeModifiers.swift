@@ -99,7 +99,35 @@ struct NodeBehaviorModifier: ViewModifier {
     let ownsAccessibilityLabel: Bool
 
     func body(content: Content) -> some View {
-        announced(targeted(transformed(dragged(doubleTapped(spoken(content))))))
+        hiddenInPlace(reportingAccessibility(reportingKeyboard(
+            announced(targeted(transformed(dragged(doubleTapped(spoken(content)))))))))
+    }
+
+    @ViewBuilder
+    private func hiddenInPlace<V: View>(_ view: V) -> some View {
+        if node.hasHiddenState {
+            view.modifier(HiddenInPlaceModifier(node: node))
+        } else {
+            view
+        }
+    }
+
+    @ViewBuilder
+    private func reportingKeyboard<V: View>(_ view: V) -> some View {
+        if node.keyboardOverlapChangedHandler == nil {
+            view
+        } else {
+            view.modifier(KeyboardOverlapReporter(node: node))
+        }
+    }
+
+    @ViewBuilder
+    private func reportingAccessibility<V: View>(_ view: V) -> some View {
+        if node.accessibilitySettingsChangedHandler == nil {
+            view
+        } else {
+            view.modifier(AccessibilitySettingsReporter(node: node))
+        }
     }
 
     /// Posts the opt-in announcement once when the view appears and again when
@@ -205,6 +233,161 @@ struct HorizontalDragModifier: ViewModifier {
                 guard !dragging else { return }
                 // onEnded, when it runs, runs in the same turn; only a cancelled drag is still active.
                 DispatchQueue.main.async { node.reportHorizontalDragCancelled() }
+            }
+    }
+}
+
+/// A Scroll's vertical geometry in points: the raw content offset (negative
+/// the top inset at the start), content and container heights, and the
+/// content insets SwiftUI applies (safe area and margins).
+struct MSUScrollMetrics: Equatable {
+    var offsetY: Double
+    var contentHeight: Double
+    var containerHeight: Double
+    var insetTop: Double
+    var insetBottom: Double
+
+    init(offsetY: Double, contentHeight: Double, containerHeight: Double,
+         insetTop: Double, insetBottom: Double) {
+        self.offsetY = offsetY
+        self.contentHeight = contentHeight
+        self.containerHeight = containerHeight
+        self.insetTop = insetTop
+        self.insetBottom = insetBottom
+    }
+
+    @available(iOS 18.0, macOS 15.0, *)
+    init(_ geometry: ScrollGeometry) {
+        self.init(offsetY: Double(geometry.contentOffset.y),
+                  contentHeight: Double(geometry.contentSize.height),
+                  containerHeight: Double(geometry.containerSize.height),
+                  insetTop: Double(geometry.contentInsets.top),
+                  insetBottom: Double(geometry.contentInsets.bottom))
+    }
+
+    var isFinite: Bool {
+        offsetY.isFinite && contentHeight.isFinite && containerHeight.isFinite
+            && insetTop.isFinite && insetBottom.isFinite
+    }
+
+    /// True when any value moved by at least `points`.
+    func differs(from other: MSUScrollMetrics, by points: Double) -> Bool {
+        abs(offsetY - other.offsetY) >= points
+            || abs(contentHeight - other.contentHeight) >= points
+            || abs(containerHeight - other.containerHeight) >= points
+            || abs(insetTop - other.insetTop) >= points
+            || abs(insetBottom - other.insetBottom) >= points
+    }
+}
+
+/// Reports a Scroll's geometry (SwiftUI onScrollGeometryChange, iOS 18 and
+/// macOS 15 or later) while the node has a handler; the node drops changes
+/// under a point.
+struct ScrollGeometryReporter: ViewModifier {
+    @ObservedObject var node: MSUNode
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if node.scrollGeometryChangedHandler == nil {
+            content
+        } else if #available(iOS 18.0, macOS 15.0, *) {
+            content.onScrollGeometryChange(for: MSUScrollMetrics.self) { geometry in
+                MSUScrollMetrics(geometry)
+            } action: { _, metrics in
+                node.reportScrollGeometry(metrics)
+            }
+        } else {
+            content
+        }
+    }
+}
+
+/// Whether a hidden view also slides: "slideDown" does, unless Reduce Motion is on.
+func msuHideSlides(transition: String, reduceMotion: Bool) -> Bool {
+    transition == "slideDown" && !reduceMotion
+}
+
+/// SwiftUI `hidden()` semantics with an animated change: the view keeps its
+/// layout space, cannot be hit and is hidden from accessibility while hidden.
+/// It fades; "slideDown" also moves it down by its own height (a visual
+/// effect, so layout never changes), and with Reduce Motion it only fades.
+struct HiddenInPlaceModifier: ViewModifier {
+    @ObservedObject var node: MSUNode
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        let hidden = node.hiddenInPlace
+        let slides = msuHideSlides(transition: node.hiddenTransition, reduceMotion: reduceMotion)
+        content
+            .opacity(hidden ? 0 : 1)
+            .visualEffect { effect, proxy in
+                effect.offset(y: hidden && slides ? proxy.size.height : 0)
+            }
+            .animation(.easeInOut(duration: node.hiddenAnimationDuration), value: hidden)
+            .allowsHitTesting(!hidden)
+            .accessibilityHidden(hidden)
+    }
+}
+
+/// The bottom of a proxy's safe area in global coordinates.
+func msuSafeAreaBottom(_ proxy: GeometryProxy) -> Double {
+    Double(proxy.frame(in: .global).maxY - proxy.safeAreaInsets.bottom)
+}
+
+/// How far the on-screen keyboard reaches into a view, from SwiftUI's safe
+/// area alone: one reader respects the keyboard region, a second ignores it,
+/// and the gap between their safe-area bottoms is the keyboard. No keyboard,
+/// a hardware keyboard or a floating keyboard leaves no gap.
+struct KeyboardOverlapReporter: ViewModifier {
+    @ObservedObject var node: MSUNode
+    @State private var withKeyboard: Double?
+    @State private var withoutKeyboard: Double?
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onChange(of: msuSafeAreaBottom(proxy), initial: true) { _, bottom in
+                            withKeyboard = bottom
+                            report(with: bottom, without: withoutKeyboard)
+                        }
+                }
+                .accessibilityHidden(true)
+            }
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onChange(of: msuSafeAreaBottom(proxy), initial: true) { _, bottom in
+                            withoutKeyboard = bottom
+                            report(with: withKeyboard, without: bottom)
+                        }
+                }
+                .ignoresSafeArea(.keyboard, edges: .bottom)
+                .accessibilityHidden(true)
+            }
+    }
+
+    private func report(with: Double?, without: Double?) {
+        guard let with, let without else { return }
+        node.reportKeyboardOverlap(max(0, without - with))
+    }
+}
+
+/// Reports VoiceOver and Reduce Motion (SwiftUI accessibility environment)
+/// when the view appears and whenever either changes.
+struct AccessibilitySettingsReporter: ViewModifier {
+    @ObservedObject var node: MSUNode
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: voiceOver, initial: true) { _, enabled in
+                node.reportAccessibilitySettings(voiceOver: enabled, reduceMotion: reduceMotion)
+            }
+            .onChange(of: reduceMotion) { _, enabled in
+                node.reportAccessibilitySettings(voiceOver: voiceOver, reduceMotion: enabled)
             }
     }
 }

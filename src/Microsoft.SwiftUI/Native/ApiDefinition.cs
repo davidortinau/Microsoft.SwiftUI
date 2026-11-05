@@ -417,6 +417,40 @@ interface MSUNode
     [Export("reportHorizontalDragCancelled")]
     void ReportHorizontalDragCancelled();
 
+    [Export("hasHiddenState")]
+    bool HasHiddenState { get; }
+
+    [Export("hiddenInPlace")]
+    bool HiddenInPlace { get; }
+
+    [Export("hiddenTransition")]
+    string HiddenTransition { get; }
+
+    [Export("hiddenAnimationDuration")]
+    double HiddenAnimationDuration { get; }
+
+    [Export("setHidden:transition:duration:")]
+    void SetHidden(bool hidden, string transition, double duration);
+
+    [Export("setScrollGeometryChangedHandler:")]
+    void SetScrollGeometryChangedHandler(Action<double, double, double, double, double> handler);
+
+    [Export("reportScrollGeometryOffsetY:contentHeight:containerHeight:insetTop:insetBottom:")]
+    void ReportScrollGeometry(double offsetY, double contentHeight, double containerHeight,
+                              double insetTop, double insetBottom);
+
+    [Export("setKeyboardOverlapChangedHandler:")]
+    void SetKeyboardOverlapChangedHandler(Action<double> handler);
+
+    [Export("reportKeyboardOverlap:")]
+    void ReportKeyboardOverlap(double points);
+
+    [Export("setAccessibilitySettingsChangedHandler:")]
+    void SetAccessibilitySettingsChangedHandler(Action<nint> handler);
+
+    [Export("reportAccessibilitySettingsVoiceOver:reduceMotion:")]
+    void ReportAccessibilitySettings(bool voiceOver, bool reduceMotion);
+
     [Export("pathDepth")]
     nint PathDepth { get; }
 

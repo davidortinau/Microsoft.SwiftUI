@@ -155,6 +155,12 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public private(set) var scrollTargetAnchor = "center"
     @objc public private(set) var scrollTargetAnimated = true
     @objc public private(set) var scrollRequest = 0 { willSet { objectWillChange.send() } }
+    /// Opt-in hide in place (SwiftUI `hidden()` semantics, animated): applied only once set.
+    @objc public private(set) var hasHiddenState = false
+    @objc public private(set) var hiddenInPlace = false
+    /// "fade", or "slideDown" (also moves down by the view's own height; fades only with Reduce Motion).
+    @objc public private(set) var hiddenTransition = "fade"
+    @objc public private(set) var hiddenAnimationDuration = 0.2
     /// YouTube player: an 11-character video id, never a URL.
     @objc public var videoId: String = "" {
         willSet {
@@ -195,8 +201,14 @@ public final class MSUNode: NSObject, ObservableObject {
     var photoPickedHandler: ((Data, String, String) -> Void)?
     var photoPickErrorHandler: ((String) -> Void)?
     var photoPickCancelledHandler: (() -> Void)?
+    var scrollGeometryChangedHandler: ((Double, Double, Double, Double, Double) -> Void)?
+    var keyboardOverlapChangedHandler: ((Double) -> Void)?
+    var accessibilitySettingsChangedHandler: ((Int) -> Void)?
     private(set) var photoPickPending = false
     private var lastViewport: (width: Double, dynamicTypeSize: Int)?
+    private var lastScrollGeometry: MSUScrollMetrics?
+    private var lastKeyboardOverlap: Double?
+    private var lastAccessibilitySettings: Int?
     private(set) var decodedPhoto: CGImage? { willSet { objectWillChange.send() } }
     private var photoWasReported = false
 
@@ -299,7 +311,13 @@ public final class MSUNode: NSObject, ObservableObject {
         photoPickedHandler = nil
         photoPickErrorHandler = nil
         photoPickCancelledHandler = nil
+        scrollGeometryChangedHandler = nil
+        keyboardOverlapChangedHandler = nil
+        accessibilitySettingsChangedHandler = nil
         lastViewport = nil
+        lastScrollGeometry = nil
+        lastKeyboardOverlap = nil
+        lastAccessibilitySettings = nil
     }
 
     @objc(setDoubleTapHandler:)
@@ -627,6 +645,91 @@ public final class MSUNode: NSObject, ObservableObject {
            last.width == width && last.dynamicTypeSize == dynamicTypeSize { return }
         lastViewport = (width, dynamicTypeSize)
         callback(width, dynamicTypeSize)
+    }
+
+    /// Hides the view in place: it keeps its layout space, cannot be hit, and
+    /// is hidden from accessibility. The change animates (ease in-out over
+    /// `duration` seconds); "slideDown" also moves it down by its own height,
+    /// except with Reduce Motion, where it only fades.
+    @objc(setHidden:transition:duration:)
+    public func setHidden(_ hidden: Bool, transition: String, duration: Double) {
+        precondition(transition == "fade" || transition == "slideDown", "Unsupported hide transition")
+        precondition(duration.isFinite && duration >= 0, "A hide animation needs a finite duration")
+        objectWillChange.send()
+        hasHiddenState = true
+        hiddenInPlace = hidden
+        hiddenTransition = transition
+        hiddenAnimationDuration = duration
+    }
+
+    /// The Scroll reports its vertical geometry (SwiftUI onScrollGeometryChange)
+    /// whenever a value moves by one point or more. The reporter is attached
+    /// only while a handler exists.
+    @objc(setScrollGeometryChangedHandler:)
+    public func setScrollGeometryChangedHandler(
+        _ handler: @escaping @convention(block) (Double, Double, Double, Double, Double) -> Void
+    ) {
+        precondition(kind == "scroll", "Only a Scroll reports its scroll geometry")
+        objectWillChange.send()
+        lastScrollGeometry = nil
+        scrollGeometryChangedHandler = handler
+    }
+
+    /// Reports a scroll geometry as SwiftUI would (also for tests and automation).
+    @objc(reportScrollGeometryOffsetY:contentHeight:containerHeight:insetTop:insetBottom:)
+    public func reportScrollGeometry(offsetY: Double, contentHeight: Double, containerHeight: Double,
+                                     insetTop: Double, insetBottom: Double) {
+        reportScrollGeometry(MSUScrollMetrics(offsetY: offsetY, contentHeight: contentHeight,
+                                              containerHeight: containerHeight,
+                                              insetTop: insetTop, insetBottom: insetBottom))
+    }
+
+    func reportScrollGeometry(_ metrics: MSUScrollMetrics) {
+        guard metrics.isFinite, let callback = scrollGeometryChangedHandler else { return }
+        if let last = lastScrollGeometry, !metrics.differs(from: last, by: 1) { return }
+        lastScrollGeometry = metrics
+        callback(metrics.offsetY, metrics.contentHeight, metrics.containerHeight,
+                 metrics.insetTop, metrics.insetBottom)
+    }
+
+    /// The view reports how far the on-screen keyboard reaches into its bottom
+    /// edge (the SwiftUI keyboard safe-area region): when it appears and on each
+    /// change of a point or more. The reporter is attached only while a handler exists.
+    @objc(setKeyboardOverlapChangedHandler:)
+    public func setKeyboardOverlapChangedHandler(_ handler: @escaping @convention(block) (Double) -> Void) {
+        objectWillChange.send()
+        lastKeyboardOverlap = nil
+        keyboardOverlapChangedHandler = handler
+    }
+
+    /// Reports a keyboard overlap as SwiftUI would (also for tests and automation).
+    /// Less than one point counts as none.
+    @objc(reportKeyboardOverlap:)
+    public func reportKeyboardOverlap(_ points: Double) {
+        guard points.isFinite, let callback = keyboardOverlapChangedHandler else { return }
+        let overlap = points >= 1 ? points : 0
+        if let last = lastKeyboardOverlap, (last == 0) == (overlap == 0), abs(last - overlap) < 1 { return }
+        lastKeyboardOverlap = overlap
+        callback(overlap)
+    }
+
+    /// The view reports VoiceOver (1) and Reduce Motion (2) as flags when it
+    /// appears and when either changes. The reporter is attached only while a handler exists.
+    @objc(setAccessibilitySettingsChangedHandler:)
+    public func setAccessibilitySettingsChangedHandler(_ handler: @escaping @convention(block) (Int) -> Void) {
+        objectWillChange.send()
+        lastAccessibilitySettings = nil
+        accessibilitySettingsChangedHandler = handler
+    }
+
+    /// Reports the assistive settings as SwiftUI would (also for tests and automation).
+    @objc(reportAccessibilitySettingsVoiceOver:reduceMotion:)
+    public func reportAccessibilitySettings(voiceOver: Bool, reduceMotion: Bool) {
+        guard let callback = accessibilitySettingsChangedHandler else { return }
+        let flags = (voiceOver ? 1 : 0) | (reduceMotion ? 2 : 0)
+        if lastAccessibilitySettings == flags { return }
+        lastAccessibilitySettings = flags
+        callback(flags)
     }
 
     var routeBinding: Binding<[String]> {
@@ -1206,6 +1309,7 @@ private struct ScrollNodeView: View {
                 ScrollView { rows }
                     .defaultScrollAnchor(.center, for: .alignment)
                     .modifier(BottomScrollAnchor(enabled: node.anchorsToBottom))
+                    .modifier(ScrollGeometryReporter(node: node))
             } else {
                 GeometryReader { viewport in
                     ScrollView {
@@ -1217,6 +1321,7 @@ private struct ScrollNodeView: View {
         } else {
             ScrollView { rows }
                 .modifier(BottomScrollAnchor(enabled: node.anchorsToBottom))
+                .modifier(ScrollGeometryReporter(node: node))
         }
     }
 }

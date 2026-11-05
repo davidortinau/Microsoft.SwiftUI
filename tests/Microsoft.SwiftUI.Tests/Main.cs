@@ -1471,6 +1471,82 @@ var cases = new (string Name, Action Test)[]
         Assert(host is NSView);
         SwiftUIHost.DetachView(feature.Root, host);
     }),
+    ("hide in place is opt-in, keeps its transition and validates its duration", () =>
+    {
+        using var row = Views.HStack(Views.Text("Ask")).WithAccessibilityIdentifier("bridge.hide.row");
+        Assert(!row.IsHidden && row.HideTransition == SwiftHideTransition.Fade);
+        Assert(ReferenceEquals(row.WithHidden(true, SwiftHideTransition.SlideDown), row));
+        Assert(row.IsHidden && row.HideTransition == SwiftHideTransition.SlideDown);
+        row.WithHidden(false, SwiftHideTransition.SlideDown, 0.3);
+        Assert(!row.IsHidden && row.HideTransition == SwiftHideTransition.SlideDown);
+        row.WithHidden(true);
+        Assert(row.IsHidden && row.HideTransition == SwiftHideTransition.Fade);
+        Throws<ArgumentOutOfRangeException>(() => row.WithHidden(true, durationSeconds: -1));
+        Throws<ArgumentOutOfRangeException>(() => row.WithHidden(true, durationSeconds: double.NaN));
+        Throws<ArgumentOutOfRangeException>(() => row.WithHidden(true, durationSeconds: 11));
+        Throws<ArgumentOutOfRangeException>(() => row.WithHidden(true, (SwiftHideTransition)7));
+        Assert(row.IsHidden && row.HideTransition == SwiftHideTransition.Fade);
+        using var hosted = SwiftUIHost.CreateView(row);
+        SwiftUIHost.DetachView(row, hosted);
+    }),
+    ("scroll geometry reports a scroll's ends and changes of a point or more", () =>
+    {
+        var reports = new List<SwiftScrollGeometry>();
+        var scroll = Views.Scroll(Views.Text("Row"));
+        Throws<InvalidOperationException>(() => scroll.InvokeScrollGeometryChanged(default));
+        Throws<InvalidOperationException>(() => Views.VStack().OnScrollGeometryChanged(_ => { }));
+        Throws<ArgumentNullException>(() => scroll.OnScrollGeometryChanged(null!));
+        Assert(ReferenceEquals(scroll.OnScrollGeometryChanged(reports.Add), scroll));
+        using var root = Views.VStack(scroll);
+        // 900 points of content in a 780-point frame: 600 inside a 100-point top and an
+        // 80-point bottom inset (SwiftUI containerSize excludes both), so the end is 200.
+        scroll.InvokeScrollGeometryChanged(new(-100, 900, 600, 100, 80));
+        scroll.InvokeScrollGeometryChanged(new(-99.5, 900, 600, 100, 80));
+        scroll.InvokeScrollGeometryChanged(new(120, 900, 600, 100, 80));
+        scroll.InvokeScrollGeometryChanged(new(200, 900, 600, 100, 80));
+        Assert(reports.Count == 3);
+        Assert(reports[0].IsAtTop && !reports[0].IsAtBottom && reports[0].CanScroll);
+        Assert(!reports[1].IsAtTop && !reports[1].IsAtBottom);
+        Assert(reports[2].MaximumOffsetY == 200 && reports[2].IsAtBottom && !reports[2].IsAtTop);
+        Assert(!new SwiftScrollGeometry(198, 900, 600, 100, 80).IsAtBottom);
+        Assert(new SwiftScrollGeometry(199.5, 900, 600, 100, 80).IsAtBottom);
+        var fits = new SwiftScrollGeometry(-100, 300, 600, 100, 80);
+        Assert(!fits.CanScroll && fits.IsAtTop && fits.IsAtBottom && fits.MaximumOffsetY == -100);
+        Assert(new SwiftScrollGeometry(-140, 900, 600, 100, 80).IsAtTop);
+        Assert(new SwiftScrollGeometry(240, 900, 600, 100, 80).IsAtBottom);
+        // A detached scroll keeps its handler and reports again once reparented.
+        root.RemoveAt(0);
+        Throws<InvalidOperationException>(() => scroll.InvokeScrollGeometryChanged(new(0, 900, 600, 100, 80)));
+        root.Add(scroll);
+        scroll.InvokeScrollGeometryChanged(new(0, 900, 600, 100, 80));
+        Assert(reports.Count == 4 && reports[3].ContentOffsetY == 0);
+    }),
+    ("keyboard overlap and accessibility settings report each change once", () =>
+    {
+        var overlaps = new List<double>();
+        var settings = new List<SwiftAccessibilitySettings>();
+        using var page = Views.VStack(Views.Text("Page"));
+        Throws<InvalidOperationException>(() => page.InvokeKeyboardOverlapChanged(10));
+        Throws<InvalidOperationException>(() =>
+            page.InvokeAccessibilitySettingsChanged(SwiftAccessibilitySettings.VoiceOver));
+        page.OnKeyboardOverlapChanged(overlaps.Add).OnAccessibilitySettingsChanged(settings.Add);
+        page.InvokeKeyboardOverlapChanged(0);
+        page.InvokeKeyboardOverlapChanged(0.5);
+        page.InvokeKeyboardOverlapChanged(291);
+        page.InvokeKeyboardOverlapChanged(291.4);
+        page.InvokeKeyboardOverlapChanged(0);
+        Assert(overlaps.SequenceEqual([0, 291, 0]));
+        page.InvokeAccessibilitySettingsChanged(SwiftAccessibilitySettings.None);
+        page.InvokeAccessibilitySettingsChanged(SwiftAccessibilitySettings.None);
+        page.InvokeAccessibilitySettingsChanged(SwiftAccessibilitySettings.VoiceOver);
+        page.InvokeAccessibilitySettingsChanged(
+            SwiftAccessibilitySettings.VoiceOver | SwiftAccessibilitySettings.ReduceMotion);
+        Assert(settings.SequenceEqual([SwiftAccessibilitySettings.None, SwiftAccessibilitySettings.VoiceOver,
+            SwiftAccessibilitySettings.VoiceOver | SwiftAccessibilitySettings.ReduceMotion]));
+        var disposed = Views.VStack().OnKeyboardOverlapChanged(_ => { });
+        disposed.Dispose();
+        Throws<ObjectDisposedException>(() => disposed.InvokeKeyboardOverlapChanged(10));
+    }),
     ("explicit host teardown", () =>
     {
         var taps = 0;

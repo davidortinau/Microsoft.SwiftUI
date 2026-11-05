@@ -100,6 +100,70 @@ public enum SwiftScrollAnchor
     Bottom = 2
 }
 
+/// <summary>How <see cref="SwiftView.WithHidden"/> moves a view as it hides or returns.</summary>
+public enum SwiftHideTransition
+{
+    /// <summary>The view fades in place.</summary>
+    Fade = 0,
+
+    /// <summary>
+    /// The view slides down by its own height while it fades; with Reduce Motion
+    /// it only fades.
+    /// </summary>
+    SlideDown = 1
+}
+
+/// <summary>
+/// Assistive settings a view reports through
+/// <see cref="SwiftView.OnAccessibilitySettingsChanged"/> (SwiftUI accessibility environment).
+/// </summary>
+[Flags]
+public enum SwiftAccessibilitySettings
+{
+    None = 0,
+
+    /// <summary>VoiceOver is running (SwiftUI <c>accessibilityVoiceOverEnabled</c>).</summary>
+    VoiceOver = 1,
+
+    /// <summary>Reduce Motion is on (SwiftUI <c>accessibilityReduceMotion</c>).</summary>
+    ReduceMotion = 2
+}
+
+/// <summary>
+/// A Scroll's vertical geometry in points (SwiftUI <c>ScrollGeometry</c>):
+/// <paramref name="ContentOffsetY"/> is the raw content offset, which is
+/// <c>-ContentInsetTop</c> at the start and can pass either end while the content
+/// bounces; <paramref name="ContainerHeight"/> is the height inside the content
+/// insets (SwiftUI <c>containerSize</c>), and the insets include the safe area
+/// and any bottom inset.
+/// </summary>
+public readonly record struct SwiftScrollGeometry(
+    double ContentOffsetY, double ContentHeight, double ContainerHeight,
+    double ContentInsetTop, double ContentInsetBottom)
+{
+    /// <summary>How close to an end, in points, still counts as at that end.</summary>
+    public const double EdgeTolerance = 1;
+
+    /// <summary>The offset at the start of the content.</summary>
+    public double MinimumOffsetY => -ContentInsetTop;
+
+    /// <summary>
+    /// The offset at the end of the content: the last point of content sits at the
+    /// bottom of the area inside the insets (the start when the content fits).
+    /// </summary>
+    public double MaximumOffsetY =>
+        Math.Max(MinimumOffsetY, ContentHeight - ContainerHeight - ContentInsetTop);
+
+    /// <summary>True when the content is taller than the space it scrolls in.</summary>
+    public bool CanScroll => MaximumOffsetY - MinimumOffsetY > EdgeTolerance;
+
+    /// <summary>True at (or above) the start; content that cannot scroll is at both ends.</summary>
+    public bool IsAtTop => ContentOffsetY <= MinimumOffsetY + EdgeTolerance;
+
+    /// <summary>True at (or past) the end; content that cannot scroll is at both ends.</summary>
+    public bool IsAtBottom => ContentOffsetY >= MaximumOffsetY - EdgeTolerance;
+}
+
 /// <summary>
 /// One image chosen in the system photo picker: its bytes, MIME type (for
 /// example <c>image/jpeg</c>) and uniform type identifier (for example

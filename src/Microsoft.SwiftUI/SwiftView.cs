@@ -37,6 +37,9 @@ public sealed class SwiftView : IDisposable
     private Action<NSData, string, string>? _photoPickedHandler;
     private Action<string>? _photoPickErrorHandler;
     private Action? _photoPickCancelledHandler;
+    private Action<double, double, double, double, double>? _scrollGeometryChangedHandler;
+    private Action<double>? _keyboardOverlapChangedHandler;
+    private Action<nint>? _accessibilitySettingsChangedHandler;
     private readonly List<string> _navigationRoutes = [];
     private SwiftView? _parent;
     private NSObject? _activeHost;
@@ -458,6 +461,134 @@ public sealed class SwiftView : IDisposable
         if (!double.IsFinite(rotationDegrees)) throw new ArgumentOutOfRangeException(nameof(rotationDegrees));
         _native.SetTransform(offsetX, offsetY, rotationDegrees, animated);
         return this;
+    }
+
+    /// <summary>
+    /// Hides this view in place, as SwiftUI <c>hidden()</c> does: it keeps its
+    /// layout space (nothing around it moves), cannot be tapped, and is hidden
+    /// from accessibility. The change animates over <paramref name="durationSeconds"/>
+    /// (ease in-out): <see cref="SwiftHideTransition.Fade"/> fades the view;
+    /// <see cref="SwiftHideTransition.SlideDown"/> also moves it down by its own
+    /// height, and only fades when Reduce Motion is on. Call it before the view is
+    /// first shown and then as often as needed. Views that never call this are unchanged.
+    /// </summary>
+    public SwiftView WithHidden(bool hidden, SwiftHideTransition transition = SwiftHideTransition.Fade,
+                                double durationSeconds = 0.2)
+    {
+        RequireActive();
+        if (!double.IsFinite(durationSeconds) || durationSeconds < 0 || durationSeconds > 10)
+            throw new ArgumentOutOfRangeException(nameof(durationSeconds));
+        _native.SetHidden(hidden, transition switch
+        {
+            SwiftHideTransition.Fade => "fade",
+            SwiftHideTransition.SlideDown => "slideDown",
+            _ => throw new ArgumentOutOfRangeException(nameof(transition))
+        }, durationSeconds);
+        return this;
+    }
+
+    /// <summary>Whether the latest <see cref="WithHidden"/> hid this view (false unless set).</summary>
+    public bool IsHidden { get { RequireActive(); return _native.HiddenInPlace; } }
+
+    /// <summary>The latest <see cref="WithHidden"/> transition (<see cref="SwiftHideTransition.Fade"/> unless set).</summary>
+    public SwiftHideTransition HideTransition
+    {
+        get
+        {
+            RequireActive();
+            return _native.HiddenTransition == "slideDown"
+                ? SwiftHideTransition.SlideDown : SwiftHideTransition.Fade;
+        }
+    }
+
+    /// <summary>
+    /// Reports this Scroll's vertical geometry (SwiftUI <c>onScrollGeometryChange</c>)
+    /// whenever its content offset, content height, container height or content
+    /// insets move by one point or more, for example to slide a floating button
+    /// away while the person scrolls down. Needs iOS 18 or macOS 15; earlier
+    /// systems report nothing. Attach it before the scroll is first shown:
+    /// attaching it to a shown scroll recreates the scroll at its start. Scrolls
+    /// that never call this are unchanged.
+    /// </summary>
+    public SwiftView OnScrollGeometryChanged(Action<SwiftScrollGeometry> handler)
+    {
+        RequireKind("scroll");
+        ArgumentNullException.ThrowIfNull(handler);
+        _scrollGeometryChangedHandler = (offset, content, container, top, bottom) =>
+            handler(new SwiftScrollGeometry(offset, content, container, top, bottom));
+        if (_nativeHandlersActive)
+            _native.SetScrollGeometryChangedHandler(_scrollGeometryChangedHandler);
+        return this;
+    }
+
+    /// <summary>Reports a scroll geometry as SwiftUI would (for tests and automation).</summary>
+    public void InvokeScrollGeometryChanged(SwiftScrollGeometry geometry)
+    {
+        RequireKind("scroll");
+        if (_scrollGeometryChangedHandler is null)
+            throw new InvalidOperationException("This scroll has no scroll geometry handler.");
+        if (!_nativeHandlersActive)
+            throw new InvalidOperationException("A detached view cannot report until reparented.");
+        _native.ReportScrollGeometry(geometry.ContentOffsetY, geometry.ContentHeight,
+            geometry.ContainerHeight, geometry.ContentInsetTop, geometry.ContentInsetBottom);
+    }
+
+    /// <summary>
+    /// Reports how many points of this view's bottom the on-screen keyboard covers
+    /// (SwiftUI's keyboard safe-area region, read from the view's own geometry):
+    /// once when the view appears and again on each change of a point or more.
+    /// It is 0 with no keyboard, a hardware keyboard or a floating keyboard.
+    /// Attach it before the view is first shown. Views that never call this are unchanged.
+    /// </summary>
+    public SwiftView OnKeyboardOverlapChanged(Action<double> handler)
+    {
+        RequireActive();
+        ArgumentNullException.ThrowIfNull(handler);
+        _keyboardOverlapChangedHandler = handler;
+        if (_nativeHandlersActive)
+            _native.SetKeyboardOverlapChangedHandler(handler);
+        return this;
+    }
+
+    /// <summary>Reports a keyboard overlap as SwiftUI would (for tests and automation).</summary>
+    public void InvokeKeyboardOverlapChanged(double points)
+    {
+        RequireActive();
+        if (_keyboardOverlapChangedHandler is null)
+            throw new InvalidOperationException("This view has no keyboard overlap handler.");
+        if (!_nativeHandlersActive)
+            throw new InvalidOperationException("A detached view cannot report until reparented.");
+        _native.ReportKeyboardOverlap(points);
+    }
+
+    /// <summary>
+    /// Reports whether VoiceOver runs and Reduce Motion is on (SwiftUI
+    /// <c>accessibilityVoiceOverEnabled</c> and <c>accessibilityReduceMotion</c>):
+    /// once when the view appears and again whenever either changes. Attach it
+    /// before the view is first shown. Views that never call this are unchanged.
+    /// </summary>
+    public SwiftView OnAccessibilitySettingsChanged(Action<SwiftAccessibilitySettings> handler)
+    {
+        RequireActive();
+        ArgumentNullException.ThrowIfNull(handler);
+        _accessibilitySettingsChangedHandler = flags =>
+            handler((SwiftAccessibilitySettings)(int)flags
+                & (SwiftAccessibilitySettings.VoiceOver | SwiftAccessibilitySettings.ReduceMotion));
+        if (_nativeHandlersActive)
+            _native.SetAccessibilitySettingsChangedHandler(_accessibilitySettingsChangedHandler);
+        return this;
+    }
+
+    /// <summary>Reports the assistive settings as SwiftUI would (for tests and automation).</summary>
+    public void InvokeAccessibilitySettingsChanged(SwiftAccessibilitySettings settings)
+    {
+        RequireActive();
+        if (_accessibilitySettingsChangedHandler is null)
+            throw new InvalidOperationException("This view has no accessibility settings handler.");
+        if (!_nativeHandlersActive)
+            throw new InvalidOperationException("A detached view cannot report until reparented.");
+        _native.ReportAccessibilitySettings(settings.HasFlag(SwiftAccessibilitySettings.VoiceOver),
+            settings.HasFlag(SwiftAccessibilitySettings.ReduceMotion));
     }
 
     /// <summary>The latest <see cref="WithTransform"/> horizontal offset in points (0 unless set).</summary>
@@ -1413,6 +1544,9 @@ public sealed class SwiftView : IDisposable
         _photoPickedHandler = null;
         _photoPickErrorHandler = null;
         _photoPickCancelledHandler = null;
+        _scrollGeometryChangedHandler = null;
+        _keyboardOverlapChangedHandler = null;
+        _accessibilitySettingsChangedHandler = null;
         _navigationRoutes.Clear();
         _children.Clear();
         _disposed = true;
@@ -1461,6 +1595,9 @@ public sealed class SwiftView : IDisposable
             if (_photoPickedHandler is not null) _native.SetPhotoPickedHandler(_photoPickedHandler);
             if (_photoPickErrorHandler is not null) _native.SetPhotoPickErrorHandler(_photoPickErrorHandler);
             if (_photoPickCancelledHandler is not null) _native.SetPhotoPickCancelledHandler(_photoPickCancelledHandler);
+            if (_scrollGeometryChangedHandler is not null) _native.SetScrollGeometryChangedHandler(_scrollGeometryChangedHandler);
+            if (_keyboardOverlapChangedHandler is not null) _native.SetKeyboardOverlapChangedHandler(_keyboardOverlapChangedHandler);
+            if (_accessibilitySettingsChangedHandler is not null) _native.SetAccessibilitySettingsChangedHandler(_accessibilitySettingsChangedHandler);
             _nativeHandlersActive = true;
         }
         foreach (var child in _children)
