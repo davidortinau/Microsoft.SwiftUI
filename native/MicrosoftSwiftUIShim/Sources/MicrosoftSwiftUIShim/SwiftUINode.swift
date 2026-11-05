@@ -2245,323 +2245,419 @@ struct SwiftUINodeView: View {
         msuAdaptiveColor(light, dark, scheme: colorScheme)
     }
 
-    @ViewBuilder
-    private var content: some View {
+    /// Each kind is type-erased on its own. One `@ViewBuilder` switch over every
+    /// kind makes a single nested `_ConditionalContent` type holding all of them,
+    /// and every conditional modifier helper in `decorated` repeats that type
+    /// again; SwiftUI resolved the whole type through `swift_getTypeByMangledName`
+    /// on the first commit, which took seconds. A node's kind never changes, so a
+    /// node keeps one erased type and its identity and state as before; a case's
+    /// own branches stay inside its erased view, unchanged.
+    private var content: AnyView {
         switch node.kind {
         case "text":
-            if node.lineLimit > 0 {
-                AnyView(textContent.lineLimit(node.lineLimit)
-                    .accessibilityIdentifier(node.automationId))
-            } else {
-                textContent.accessibilityIdentifier(node.automationId)
+            return erased {
+                if node.lineLimit > 0 {
+                    AnyView(textContent.lineLimit(node.lineLimit)
+                        .accessibilityIdentifier(node.automationId))
+                } else {
+                    textContent.accessibilityIdentifier(node.automationId)
+                }
             }
         case "inlineText":
-            if node.children.count == 2 {
-                InlineTextNodeView(leading: node.children[0], trailing: node.children[1])
+            return erased {
+                if node.children.count == 2 {
+                    InlineTextNodeView(leading: node.children[0], trailing: node.children[1])
+                }
             }
         case "divider":
-            Divider().accessibilityHidden(true)
+            return erased {
+                Divider().accessibilityHidden(true)
+            }
         case "button":
-            styledButton
-                .accessibilityAddTraits(node.accessibilitySelected ? .isSelected : [])
+            return erased {
+                styledButton
+                    .accessibilityAddTraits(node.accessibilitySelected ? .isSelected : [])
+            }
         case "textField", "textEditor", "secureField":
-            TextInputNodeView(node: node)
+            return erased {
+                TextInputNodeView(node: node)
+            }
         case "vstack":
-            VStack(alignment: .leading, spacing: node.spacing) {
-                ForEach(node.children, id: \.id) {
-                    SwiftUINodeView(node: $0).id($0.id)
+            return erased {
+                VStack(alignment: .leading, spacing: node.spacing) {
+                    ForEach(node.children, id: \.id) {
+                        SwiftUINodeView(node: $0).id($0.id)
+                    }
                 }
             }
         case "hstack":
-            if node.adaptiveStackBelowWidth > 0 {
-                AdaptiveStackNodeView(node: node)
-            } else {
-                HStack(spacing: node.spacing) {
-                    ForEach(node.children, id: \.id) { SwiftUINodeView(node: $0) }
+            return erased {
+                if node.adaptiveStackBelowWidth > 0 {
+                    AdaptiveStackNodeView(node: node)
+                } else {
+                    HStack(spacing: node.spacing) {
+                        ForEach(node.children, id: \.id) { SwiftUINodeView(node: $0) }
+                    }
                 }
             }
         case "buttonGroup":
-            ButtonGroupLayout(wraps: node.buttonGroupWraps,
-                              overlap: node.buttonGroupOverlap,
-                              fillAvailableWidth: node.buttonGroupFillAvailableWidth) {
-                ForEach(node.children, id: \.id) { child in
-                    let index = node.children.firstIndex(where: { $0 === child }) ?? 0
-                    ButtonGroupChildView(node: child,
-                        selected: index == node.selectedIndex,
-                        accessibilityOrder: Double(node.children.count - index),
-                        fillsAvailableWidth: !node.buttonGroupWraps
-                            && node.buttonGroupFillAvailableWidth)
+            return erased {
+                ButtonGroupLayout(wraps: node.buttonGroupWraps,
+                                  overlap: node.buttonGroupOverlap,
+                                  fillAvailableWidth: node.buttonGroupFillAvailableWidth) {
+                    ForEach(node.children, id: \.id) { child in
+                        let index = node.children.firstIndex(where: { $0 === child }) ?? 0
+                        ButtonGroupChildView(node: child,
+                            selected: index == node.selectedIndex,
+                            accessibilityOrder: Double(node.children.count - index),
+                            fillsAvailableWidth: !node.buttonGroupWraps
+                                && node.buttonGroupFillAvailableWidth)
+                    }
                 }
             }
         case "scroll":
-            ScrollNodeView(node: node)
+            return erased {
+                ScrollNodeView(node: node)
+            }
         case "overlay":
-            if node.children.count == 2 {
-                OverlayNodeView(node: node)
+            return erased {
+                if node.children.count == 2 {
+                    OverlayNodeView(node: node)
+                }
             }
         case "bottomInset":
-            if node.children.count == 2 {
-                SwiftUINodeView(node: node.children[0])
-                    .safeAreaInset(edge: .bottom, spacing: 0) {
-                        SwiftUINodeView(node: node.children[1])
-                    }
-            }
-        case "list", "form":
-            NativeCollectionNodeView(node: node)
-        case "section":
-            Section {
-                ForEach(node.children, id: \.id) { SwiftUINodeView(node: $0) }
-            } header: {
-                Text(node.text)
-            }
-        case "grid":
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: node.gridColumns),
-                      spacing: node.spacing) {
-                ForEach(node.children, id: \.id) { SwiftUINodeView(node: $0) }
-            }
-        case "horizontalGrid":
-            HorizontalGridNodeView(node: node)
-        case "navigationStack":
-            NavigationStack(path: node.routeBinding) {
-                if let root = node.children.first {
-                    SwiftUINodeView(node: root)
-                        .navigationDestination(for: String.self) { route in
-                            if let destination = node.children.dropFirst().first(where: { $0.route == route }) {
-                                SwiftUINodeView(node: destination)
-                                    .navigationBarBackButtonHidden(!node.canNavigateBack)
-                            }
+            return erased {
+                if node.children.count == 2 {
+                    SwiftUINodeView(node: node.children[0])
+                        .safeAreaInset(edge: .bottom, spacing: 0) {
+                            SwiftUINodeView(node: node.children[1])
                         }
                 }
             }
-        case "tabView":
-            TabView(selection: Binding(
-                get: { node.selectedIndex },
-                set: { next in
-                    node.selectedIndex = next
-                    node.selectionChangedHandler?(next)
-                }
-            )) {
-                ForEach(node.children.indices, id: \.self) { index in
-                    SwiftUINodeView(node: node.children[index]).tag(index)
-                }
+        case "list", "form":
+            return erased {
+                NativeCollectionNodeView(node: node)
             }
-        case "tab":
-            if let root = node.children.first {
-                SwiftUINodeView(node: root)
-                    .tabItem { Label(node.text, systemImage: node.imageName) }
-            }
-        case "navigation":
-            NavigationStack {
-                if let root = node.children.first {
-                    SwiftUINodeView(node: root).navigationTitle(node.text)
-                }
-            }
-        case "navigationLink":
-            if let destination = node.children.first {
-                NavigationLink(destination: SwiftUINodeView(node: destination)) {
+        case "section":
+            return erased {
+                Section {
+                    ForEach(node.children, id: \.id) { SwiftUINodeView(node: $0) }
+                } header: {
                     Text(node.text)
                 }
             }
-        case "sheet":
-            if let content = node.children.first, node.children.count == 2 {
-                SwiftUINodeView(node: content)
-                    .sheet(isPresented: Binding(
-                        get: { node.isPresented },
-                        set: { next in node.isPresented = next }
-                    ), onDismiss: {
-                        node.dismissedHandler?()
-                    }) {
-                        #if os(iOS)
-                        if node.sheetDetentFraction > 0 {
-                            SwiftUINodeView(node: node.children[1])
-                                .presentationDetents([.fraction(node.sheetDetentFraction)])
-                                .presentationBackgroundInteraction(.disabled)
-                        } else {
-                            SwiftUINodeView(node: node.children[1])
-                        }
-                        #else
-                        SwiftUINodeView(node: node.children[1])
-                        #endif
-                    }
-            }
-        case "inspector":
-            if let content = node.children.first, node.children.count == 2 {
-                SwiftUINodeView(node: content)
-                    .inspector(isPresented: Binding(
-                        get: { node.isPresented },
-                        set: { next in node.applyInspectorPresentation(next) }
-                    )) {
-                        InspectorContentView(node: node, content: node.children[1])
-                    }
-            }
-        case "photoCover":
-            PhotoCoverNodeView(node: node)
-        case "image":
-            symbolImage
-        case "photo":
-            PhotoNodeView(node: node)
-        case "zoomPhoto":
-            ZoomPhotoNodeView(node: node)
-        case "circle":
-            Circle()
-                .fill(adaptiveColor(node.foregroundHex, node.foregroundDarkHex) ?? .clear)
-                .frame(width: node.diameter, height: node.diameter)
-                .accessibilityElement(children: .ignore)
-                .accessibilityHidden(node.accessibilityLabelText.isEmpty)
-        case "toggle":
-            Toggle(node.text, isOn: Binding(
-                get: { node.isOn },
-                set: { next in
-                    node.isOn = next
-                    node.boolChangedHandler?(next)
-                }
-            )).accessibilityIdentifier(node.automationId)
-        case "slider":
-            Slider(value: Binding(
-                get: { node.value },
-                set: { next in
-                    node.value = next
-                    node.valueChangedHandler?(next)
-                }
-            ), in: node.minimum...node.maximum) {
-                // The label view is the accessible name; adding .accessibilityLabel reads it twice.
-                Text(node.accessibilityLabelText)
-            }
-            .accessibilityIdentifier(node.automationId)
-        case "progress":
-            let fraction = node.maximum > 0 ? node.value / node.maximum : 0
-            ProgressView(value: node.maximum > 0 ? node.value : 0,
-                         total: node.maximum > 0 ? node.maximum : 1)
-                .progressViewStyle(SourceHeightProgressStyle(
-                    thickness: node.progressThickness,
-                    tint: adaptiveColor(node.tintHex, node.tintDarkHex) ?? .accentColor,
-                    track: adaptiveColor(node.progressTrackHex, node.progressTrackDarkHex)
-                        ?? .secondary.opacity(0.2)))
-                .accessibilityLabel(node.accessibilityLabelText)
-                .accessibilityValue("\(Int((fraction * 100).rounded()))%")
-                .accessibilityIdentifier(node.automationId)
-        case "indeterminateProgress":
-            ProgressView()
-                .progressViewStyle(.circular)
-                .accessibilityLabel(node.accessibilityLabelText)
-                .accessibilityIdentifier(node.automationId)
-        case "quickSuggestions":
-            if let content = node.children.first, node.children.count == 2,
-               let field = quickAddField(in: content, id: node.quickAddAnchorId) {
-                QuickAddSuggestionsNodeView(node: node, field: field)
-            }
-        case "starterOverlay":
-            StarterBlockingOverlayNodeView(node: node)
-        case "deleteConfirmation":
-            ResourceDeleteConfirmationNodeView(node: node)
-        case "picker":
-            styledPicker(indexPicker)
-        case "valuePicker":
-            styledPicker(valuePicker)
-        case "searchable":
-            if let root = node.children.first {
-                SwiftUINodeView(node: root)
-                    .searchable(text: Binding(
-                        get: { node.text },
-                        set: { next in
-                            node.text = next
-                            node.textChangedHandler?(next)
-                        }
-                    ), prompt: node.placeholder)
-            }
-        case "menu":
-            if let label = node.children.first, label.kind != "button" {
-                Menu {
-                    ForEach(node.children.dropFirst(), id: \.id) { SwiftUINodeView(node: $0) }
-                } label: {
-                    SwiftUINodeView(node: label)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(.interaction, Rectangle())
-                }
-                .accessibilityValue(node.text)
-                .accessibilityIdentifier(node.automationId)
-            } else {
-                Menu(node.text) {
+        case "grid":
+            return erased {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: node.gridColumns),
+                          spacing: node.spacing) {
                     ForEach(node.children, id: \.id) { SwiftUINodeView(node: $0) }
-                }.accessibilityIdentifier(node.automationId)
+                }
             }
-        case "toolbar":
-            if let root = node.children.first {
-                SwiftUINodeView(node: root)
-                    .toolbar {
-                        ToolbarItemGroup(placement: .automatic) {
-                            ForEach(node.children.dropFirst(), id: \.id) { item in
-                                SwiftUINodeView(node: item)
-                            }
-                        }
-                    }
+        case "horizontalGrid":
+            return erased {
+                HorizontalGridNodeView(node: node)
             }
-        case "alert":
-            if let root = node.children.first {
-                SwiftUINodeView(node: root)
-                    .alert(node.text, isPresented: Binding(
-                        get: { node.isPresented },
-                        set: { node.isPresented = $0 }
-                    )) {
-                        ForEach(node.children.dropFirst(), id: \.id) { SwiftUINodeView(node: $0) }
-                    } message: {
-                        Text(node.placeholder)
-                    }
-            }
-        case "confirmationDialog":
-            if let root = node.children.first {
-                SwiftUINodeView(node: root)
-                    .confirmationDialog(node.text, isPresented: Binding(
-                        get: { node.isPresented },
-                        set: { node.isPresented = $0 }
-                    ), titleVisibility: .visible) {
-                        ForEach(node.children.dropFirst(), id: \.id) { SwiftUINodeView(node: $0) }
-                    }
-            }
-        case "fileImporter":
-            if let root = node.children.first {
-                SwiftUINodeView(node: root)
-                    .fileImporter(isPresented: Binding(
-                        get: { node.isPresented },
-                        set: { node.isPresented = $0 }
-                    ), allowedContentTypes: [.plainText, .commaSeparatedText],
-                        allowsMultipleSelection: false,
-                        onCompletion: { result in
-                            switch result {
-                            case .success(let urls):
-                                if let url = urls.first { importFile(.success(url)) }
-                                else { node.fileImportErrorHandler?("readFailed") }
-                            case .failure(let error):
-                                let failure = error as NSError
-                                if failure.domain == NSCocoaErrorDomain && failure.code == NSUserCancelledError {
-                                    node.fileImportCancelledHandler?()
-                                } else {
-                                    node.fileImportErrorHandler?("readFailed")
+        case "navigationStack":
+            return erased {
+                NavigationStack(path: node.routeBinding) {
+                    if let root = node.children.first {
+                        SwiftUINodeView(node: root)
+                            .navigationDestination(for: String.self) { route in
+                                if let destination = node.children.dropFirst().first(where: { $0.route == route }) {
+                                    SwiftUINodeView(node: destination)
+                                        .navigationBarBackButtonHidden(!node.canNavigateBack)
                                 }
                             }
-                        },
-                        onCancellation: { node.fileImportCancelledHandler?() })
+                    }
+                }
             }
-        case "photoPicker":
-            if let root = node.children.first {
-                SwiftUINodeView(node: root)
-                    .photosPicker(isPresented: Binding(
-                        get: { node.isPresented },
-                        set: { node.applyPhotoPickerPresentation($0) }
-                    ), selection: Binding<PhotosPickerItem?>(
-                        get: { nil },
-                        set: { item in if let item { node.receivePickedPhoto(item) } }
-                    ), matching: .images)
+        case "tabView":
+            return erased {
+                TabView(selection: Binding(
+                    get: { node.selectedIndex },
+                    set: { next in
+                        node.selectedIndex = next
+                        node.selectionChangedHandler?(next)
+                    }
+                )) {
+                    ForEach(node.children.indices, id: \.self) { index in
+                        SwiftUINodeView(node: node.children[index]).tag(index)
+                    }
+                }
             }
-        case "youTubePlayer":
-            if !node.videoId.isEmpty {
-                MSUYouTubePlayerView(videoId: node.videoId)
-                    .aspectRatio(16.0 / 9.0, contentMode: .fit)
+        case "tab":
+            return erased {
+                if let root = node.children.first {
+                    SwiftUINodeView(node: root)
+                        .tabItem { Label(node.text, systemImage: node.imageName) }
+                }
+            }
+        case "navigation":
+            return erased {
+                NavigationStack {
+                    if let root = node.children.first {
+                        SwiftUINodeView(node: root).navigationTitle(node.text)
+                    }
+                }
+            }
+        case "navigationLink":
+            return erased {
+                if let destination = node.children.first {
+                    NavigationLink(destination: SwiftUINodeView(node: destination)) {
+                        Text(node.text)
+                    }
+                }
+            }
+        case "sheet":
+            return erased {
+                if let content = node.children.first, node.children.count == 2 {
+                    SwiftUINodeView(node: content)
+                        .sheet(isPresented: Binding(
+                            get: { node.isPresented },
+                            set: { next in node.isPresented = next }
+                        ), onDismiss: {
+                            node.dismissedHandler?()
+                        }) {
+                            #if os(iOS)
+                            if node.sheetDetentFraction > 0 {
+                                SwiftUINodeView(node: node.children[1])
+                                    .presentationDetents([.fraction(node.sheetDetentFraction)])
+                                    .presentationBackgroundInteraction(.disabled)
+                            } else {
+                                SwiftUINodeView(node: node.children[1])
+                            }
+                            #else
+                            SwiftUINodeView(node: node.children[1])
+                            #endif
+                        }
+                }
+            }
+        case "inspector":
+            return erased {
+                if let content = node.children.first, node.children.count == 2 {
+                    SwiftUINodeView(node: content)
+                        .inspector(isPresented: Binding(
+                            get: { node.isPresented },
+                            set: { next in node.applyInspectorPresentation(next) }
+                        )) {
+                            InspectorContentView(node: node, content: node.children[1])
+                        }
+                }
+            }
+        case "photoCover":
+            return erased {
+                PhotoCoverNodeView(node: node)
+            }
+        case "image":
+            return symbolImage
+        case "photo":
+            return erased {
+                PhotoNodeView(node: node)
+            }
+        case "zoomPhoto":
+            return erased {
+                ZoomPhotoNodeView(node: node)
+            }
+        case "circle":
+            return erased {
+                Circle()
+                    .fill(adaptiveColor(node.foregroundHex, node.foregroundDarkHex) ?? .clear)
+                    .frame(width: node.diameter, height: node.diameter)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityHidden(node.accessibilityLabelText.isEmpty)
+            }
+        case "toggle":
+            return erased {
+                Toggle(node.text, isOn: Binding(
+                    get: { node.isOn },
+                    set: { next in
+                        node.isOn = next
+                        node.boolChangedHandler?(next)
+                    }
+                )).accessibilityIdentifier(node.automationId)
+            }
+        case "slider":
+            return erased {
+                Slider(value: Binding(
+                    get: { node.value },
+                    set: { next in
+                        node.value = next
+                        node.valueChangedHandler?(next)
+                    }
+                ), in: node.minimum...node.maximum) {
+                    // The label view is the accessible name; adding .accessibilityLabel reads it twice.
+                    Text(node.accessibilityLabelText)
+                }
+                .accessibilityIdentifier(node.automationId)
+            }
+        case "progress":
+            return erased {
+                let fraction = node.maximum > 0 ? node.value / node.maximum : 0
+                ProgressView(value: node.maximum > 0 ? node.value : 0,
+                             total: node.maximum > 0 ? node.maximum : 1)
+                    .progressViewStyle(SourceHeightProgressStyle(
+                        thickness: node.progressThickness,
+                        tint: adaptiveColor(node.tintHex, node.tintDarkHex) ?? .accentColor,
+                        track: adaptiveColor(node.progressTrackHex, node.progressTrackDarkHex)
+                            ?? .secondary.opacity(0.2)))
+                    .accessibilityLabel(node.accessibilityLabelText)
+                    .accessibilityValue("\(Int((fraction * 100).rounded()))%")
                     .accessibilityIdentifier(node.automationId)
             }
+        case "indeterminateProgress":
+            return erased {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .accessibilityLabel(node.accessibilityLabelText)
+                    .accessibilityIdentifier(node.automationId)
+            }
+        case "quickSuggestions":
+            return erased {
+                if let content = node.children.first, node.children.count == 2,
+                   let field = quickAddField(in: content, id: node.quickAddAnchorId) {
+                    QuickAddSuggestionsNodeView(node: node, field: field)
+                }
+            }
+        case "starterOverlay":
+            return erased {
+                StarterBlockingOverlayNodeView(node: node)
+            }
+        case "deleteConfirmation":
+            return erased {
+                ResourceDeleteConfirmationNodeView(node: node)
+            }
+        case "picker":
+            return erased {
+                styledPicker(indexPicker)
+            }
+        case "valuePicker":
+            return erased {
+                styledPicker(valuePicker)
+            }
+        case "searchable":
+            return erased {
+                if let root = node.children.first {
+                    SwiftUINodeView(node: root)
+                        .searchable(text: Binding(
+                            get: { node.text },
+                            set: { next in
+                                node.text = next
+                                node.textChangedHandler?(next)
+                            }
+                        ), prompt: node.placeholder)
+                }
+            }
+        case "menu":
+            return erased {
+                if let label = node.children.first, label.kind != "button" {
+                    Menu {
+                        ForEach(node.children.dropFirst(), id: \.id) { SwiftUINodeView(node: $0) }
+                    } label: {
+                        SwiftUINodeView(node: label)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(.interaction, Rectangle())
+                    }
+                    .accessibilityValue(node.text)
+                    .accessibilityIdentifier(node.automationId)
+                } else {
+                    Menu(node.text) {
+                        ForEach(node.children, id: \.id) { SwiftUINodeView(node: $0) }
+                    }.accessibilityIdentifier(node.automationId)
+                }
+            }
+        case "toolbar":
+            return erased {
+                if let root = node.children.first {
+                    SwiftUINodeView(node: root)
+                        .toolbar {
+                            ToolbarItemGroup(placement: .automatic) {
+                                ForEach(node.children.dropFirst(), id: \.id) { item in
+                                    SwiftUINodeView(node: item)
+                                }
+                            }
+                        }
+                }
+            }
+        case "alert":
+            return erased {
+                if let root = node.children.first {
+                    SwiftUINodeView(node: root)
+                        .alert(node.text, isPresented: Binding(
+                            get: { node.isPresented },
+                            set: { node.isPresented = $0 }
+                        )) {
+                            ForEach(node.children.dropFirst(), id: \.id) { SwiftUINodeView(node: $0) }
+                        } message: {
+                            Text(node.placeholder)
+                        }
+                }
+            }
+        case "confirmationDialog":
+            return erased {
+                if let root = node.children.first {
+                    SwiftUINodeView(node: root)
+                        .confirmationDialog(node.text, isPresented: Binding(
+                            get: { node.isPresented },
+                            set: { node.isPresented = $0 }
+                        ), titleVisibility: .visible) {
+                            ForEach(node.children.dropFirst(), id: \.id) { SwiftUINodeView(node: $0) }
+                        }
+                }
+            }
+        case "fileImporter":
+            return erased {
+                if let root = node.children.first {
+                    SwiftUINodeView(node: root)
+                        .fileImporter(isPresented: Binding(
+                            get: { node.isPresented },
+                            set: { node.isPresented = $0 }
+                        ), allowedContentTypes: [.plainText, .commaSeparatedText],
+                            allowsMultipleSelection: false,
+                            onCompletion: { result in
+                                switch result {
+                                case .success(let urls):
+                                    if let url = urls.first { importFile(.success(url)) }
+                                    else { node.fileImportErrorHandler?("readFailed") }
+                                case .failure(let error):
+                                    let failure = error as NSError
+                                    if failure.domain == NSCocoaErrorDomain && failure.code == NSUserCancelledError {
+                                        node.fileImportCancelledHandler?()
+                                    } else {
+                                        node.fileImportErrorHandler?("readFailed")
+                                    }
+                                }
+                            },
+                            onCancellation: { node.fileImportCancelledHandler?() })
+                }
+            }
+        case "photoPicker":
+            return erased {
+                if let root = node.children.first {
+                    SwiftUINodeView(node: root)
+                        .photosPicker(isPresented: Binding(
+                            get: { node.isPresented },
+                            set: { node.applyPhotoPickerPresentation($0) }
+                        ), selection: Binding<PhotosPickerItem?>(
+                            get: { nil },
+                            set: { item in if let item { node.receivePickedPhoto(item) } }
+                        ), matching: .images)
+                }
+            }
+        case "youTubePlayer":
+            return erased {
+                if !node.videoId.isEmpty {
+                    MSUYouTubePlayerView(videoId: node.videoId)
+                        .aspectRatio(16.0 / 9.0, contentMode: .fit)
+                        .accessibilityIdentifier(node.automationId)
+                }
+            }
         default:
-            EmptyView()
+            return AnyView(EmptyView())
         }
+    }
+
+    private func erased<V: View>(@ViewBuilder _ view: () -> V) -> AnyView {
+        AnyView(view())
     }
 }
 

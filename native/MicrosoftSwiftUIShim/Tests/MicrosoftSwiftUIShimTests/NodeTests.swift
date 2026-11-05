@@ -1394,6 +1394,18 @@ final class NodeTests: XCTestCase {
         withExtendedLifetime(subscription) {}
     }
 
+    /// SwiftUI resolves the node view's whole static body type on the first commit.
+    /// With every kind in one `@ViewBuilder` switch, repeated by each conditional
+    /// modifier helper, that type's name was 27.7 million characters and took
+    /// seconds to resolve at launch. Each kind is type-erased on its own now.
+    @MainActor
+    func testNodeViewBodyTypeStaysSmall() {
+        let node = MSUBridge.makeNode(kind: "text")
+        let name = String(reflecting: type(of: SwiftUINodeView(node: node).body))
+        XCTAssertLessThan(name.count, 1_000_000,
+                          "SwiftUINodeView.body grew to a \(name.count)-character type; erase large branches.")
+    }
+
     #if canImport(AppKit) && !targetEnvironment(macCatalyst)
     @MainActor
     func testAppKitHostCreatesViewAndController() {
