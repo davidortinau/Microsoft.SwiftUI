@@ -2514,10 +2514,14 @@ struct OverlayNodeView: View {
     @ObservedObject var node: MSUNode
 
     var body: some View {
-        SwiftUINodeView(node: node.children[0])
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .overlay(alignment: node.overlayEdge == "top" ? .top : .bottom) {
-                SwiftUINodeView(node: node.children[1])
-            }
+        // A navigation pop can re-render this node while its children are being
+        // rebuilt; index only once both are present.
+        if node.children.count == 2 {
+            SwiftUINodeView(node: node.children[0])
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: node.overlayEdge == "top" ? .top : .bottom) {
+                    SwiftUINodeView(node: node.children[1])
+                }
+        }
     }
 }
