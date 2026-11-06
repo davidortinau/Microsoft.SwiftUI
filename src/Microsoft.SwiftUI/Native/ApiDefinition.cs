@@ -354,6 +354,9 @@ interface MSUNode
     [Export("anchorsToBottom")]
     bool AnchorsToBottom { get; set; }
 
+    [Export("labelsHidden")]
+    bool LabelsHidden { get; set; }
+
     [Export("scrollDismissesKeyboard")]
     string ScrollDismissesKeyboard { get; set; }
 

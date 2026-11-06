@@ -1328,6 +1328,28 @@ public sealed class SwiftView : IDisposable
         }
     }
 
+    /// <summary>
+    /// Draws only this Toggle's switch (SwiftUI <c>labelsHidden</c>); its text stays the
+    /// accessible name. Lets a row put the switch beside other content without the label
+    /// taking the width. Off by default.
+    /// </summary>
+    public SwiftView WithLabelsHidden(bool hidden = true)
+    {
+        RequireKind("toggle");
+        _native.LabelsHidden = hidden;
+        return this;
+    }
+
+    /// <summary>Whether <see cref="WithLabelsHidden"/> hides this Toggle's label.</summary>
+    public bool LabelsHidden
+    {
+        get
+        {
+            RequireKind("toggle");
+            return _native.LabelsHidden;
+        }
+    }
+
     public SwiftView WithMinimumHeight(double points)
     {
         RequireActive();

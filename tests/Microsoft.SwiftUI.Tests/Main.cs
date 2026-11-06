@@ -1064,6 +1064,21 @@ var cases = new (string Name, Action Test)[]
         using var host = SwiftUIHost.CreateView(root);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("a toggle's label can be hidden, opt-in, and only on a Toggle", () =>
+    {
+        using var root = Views.Toggle("Pause monitoring", true, _ => { });
+        Assert(!root.LabelsHidden);
+        Assert(ReferenceEquals(root.WithLabelsHidden(), root) && root.LabelsHidden);
+        Assert(root.Text == "Pause monitoring");
+        root.WithLabelsHidden(false);
+        Assert(!root.LabelsHidden);
+        root.WithLabelsHidden();
+        Throws<InvalidOperationException>(() => Views.Text("x").WithLabelsHidden());
+        Throws<InvalidOperationException>(() => _ = Views.VStack().LabelsHidden);
+        using var host = SwiftUIHost.CreateView(root);
+        Assert(host is NSView);
+        SwiftUIHost.DetachView(root, host);
+    }),
     ("keyboard dismissal by dragging is opt-in and requires a Scroll", () =>
     {
         using var root = Views.Scroll(Views.TextEditor("Draft"), Views.Text("Below"));

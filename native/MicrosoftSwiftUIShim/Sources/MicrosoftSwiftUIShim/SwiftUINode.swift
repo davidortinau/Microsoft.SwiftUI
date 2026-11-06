@@ -171,6 +171,9 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var inlineNavigationTitle = false { willSet { objectWillChange.send() } }
     @objc public var centerWhenShort = false { willSet { objectWillChange.send() } }
     @objc public var anchorsToBottom = false { willSet { objectWillChange.send() } }
+    /// A toggle node draws only its switch (SwiftUI `labelsHidden`); its text stays the
+    /// accessible name. Off by default, so existing toggles keep their label.
+    @objc public var labelsHidden = false { willSet { objectWillChange.send() } }
     /// How dragging a scroll node dismisses the software keyboard (SwiftUI
     /// `scrollDismissesKeyboard`): "" keeps the system's automatic behavior, or "immediately",
     /// "interactively" or "never".
@@ -2588,7 +2591,9 @@ struct SwiftUINodeView: View {
                         node.isOn = next
                         node.boolChangedHandler?(next)
                     }
-                )).accessibilityIdentifier(node.automationId)
+                ))
+                .modifier(ToggleLabelsHidden(hidden: node.labelsHidden))
+                .accessibilityIdentifier(node.automationId)
             }
         case "slider":
             return erased {
@@ -2837,6 +2842,21 @@ struct OverlayNodeView: View {
                 .overlay(alignment: node.overlayEdge == "top" ? .top : .bottom) {
                     SwiftUINodeView(node: node.children[1])
                 }
+        }
+    }
+}
+
+/// A toggle that shows only its switch (`labelsHidden`), keeping its text as the accessible
+/// name, so a row can place the switch beside other content without a label taking the width.
+struct ToggleLabelsHidden: ViewModifier {
+    let hidden: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if hidden {
+            content.labelsHidden()
+        } else {
+            content
         }
     }
 }
