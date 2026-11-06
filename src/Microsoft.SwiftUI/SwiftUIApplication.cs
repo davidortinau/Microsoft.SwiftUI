@@ -58,6 +58,19 @@ public enum SwiftTabBarMinimizeBehavior
     Never
 }
 
+/// <summary>How dragging a Scroll dismisses the software keyboard (SwiftUI <c>ScrollDismissesKeyboardMode</c>).</summary>
+public enum SwiftScrollDismissesKeyboard
+{
+    /// <summary>The system's behavior for the context.</summary>
+    Automatic,
+    /// <summary>The keyboard goes as soon as the content is dragged.</summary>
+    Immediately,
+    /// <summary>The keyboard follows a drag that reaches it and can be pulled away (as in Messages).</summary>
+    Interactively,
+    /// <summary>Dragging never dismisses the keyboard.</summary>
+    Never
+}
+
 /// <summary>A tab view's style (SwiftUI <c>TabViewStyle</c>).</summary>
 public enum SwiftTabViewStyle
 {

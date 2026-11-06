@@ -354,6 +354,9 @@ interface MSUNode
     [Export("anchorsToBottom")]
     bool AnchorsToBottom { get; set; }
 
+    [Export("scrollDismissesKeyboard")]
+    string ScrollDismissesKeyboard { get; set; }
+
     [Export("nativeListCanvasHex")]
     string NativeListCanvasHex { get; set; }
 

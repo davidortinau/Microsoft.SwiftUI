@@ -171,6 +171,16 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var inlineNavigationTitle = false { willSet { objectWillChange.send() } }
     @objc public var centerWhenShort = false { willSet { objectWillChange.send() } }
     @objc public var anchorsToBottom = false { willSet { objectWillChange.send() } }
+    /// How dragging a scroll node dismisses the software keyboard (SwiftUI
+    /// `scrollDismissesKeyboard`): "" keeps the system's automatic behavior, or "immediately",
+    /// "interactively" or "never".
+    @objc public var scrollDismissesKeyboard = "" {
+        willSet {
+            precondition(["", "immediately", "interactively", "never"].contains(newValue),
+                         "Unsupported keyboard dismissal: \(newValue)")
+            objectWillChange.send()
+        }
+    }
     @objc public var nativeListCanvasHex = "" { willSet { objectWillChange.send() } }
     @objc public var nativeListCanvasDarkHex = "" { willSet { objectWillChange.send() } }
     @objc public var nativeListRowHex = "" { willSet { objectWillChange.send() } }
@@ -1347,10 +1357,16 @@ private struct ScrollNodeView: View {
         LazyVStack(alignment: .leading, spacing: node.spacing) {
             ForEach(node.children, id: \.id) { SwiftUINodeView(node: $0) }
         }
+        // The scroll view's own keyboard dismissal: scrollable views inside the content (a
+        // TextEditor, a nested scroll) keep the system default.
+        .modifier(ScrollKeyboardDismissal(mode: node.scrollDismissesKeyboard.isEmpty
+            ? "" : "automatic"))
     }
 
     var body: some View {
-        ScrollTargetReader(node: node) { scrollView }
+        ScrollTargetReader(node: node) {
+            scrollView.modifier(ScrollKeyboardDismissal(mode: node.scrollDismissesKeyboard))
+        }
     }
 
     @ViewBuilder
@@ -1373,6 +1389,31 @@ private struct ScrollNodeView: View {
             ScrollView { rows }
                 .modifier(BottomScrollAnchor(enabled: node.anchorsToBottom))
                 .modifier(ScrollGeometryReporter(node: node))
+        }
+    }
+}
+
+/// SwiftUI `scrollDismissesKeyboard` for a scroll node's mode; "" applies nothing, so the
+/// environment's (the system's automatic) behavior stays.
+struct ScrollKeyboardDismissal: ViewModifier {
+    let mode: String
+
+    static func resolved(_ mode: String) -> ScrollDismissesKeyboardMode? {
+        switch mode {
+        case "automatic": return .automatic
+        case "immediately": return .immediately
+        case "interactively": return .interactively
+        case "never": return .never
+        default: return nil
+        }
+    }
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let resolved = Self.resolved(mode) {
+            content.scrollDismissesKeyboard(resolved)
+        } else {
+            content
         }
     }
 }

@@ -1064,6 +1064,28 @@ var cases = new (string Name, Action Test)[]
         using var host = SwiftUIHost.CreateView(root);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("keyboard dismissal by dragging is opt-in and requires a Scroll", () =>
+    {
+        using var root = Views.Scroll(Views.TextEditor("Draft"), Views.Text("Below"));
+        Assert(root.ScrollDismissesKeyboard == SwiftScrollDismissesKeyboard.Automatic);
+        Assert(ReferenceEquals(
+                root.WithScrollDismissesKeyboard(SwiftScrollDismissesKeyboard.Immediately), root)
+            && root.ScrollDismissesKeyboard == SwiftScrollDismissesKeyboard.Immediately);
+        root.WithScrollDismissesKeyboard(SwiftScrollDismissesKeyboard.Never);
+        Assert(root.ScrollDismissesKeyboard == SwiftScrollDismissesKeyboard.Never);
+        root.WithScrollDismissesKeyboard(SwiftScrollDismissesKeyboard.Automatic);
+        Assert(root.ScrollDismissesKeyboard == SwiftScrollDismissesKeyboard.Automatic);
+        root.WithScrollDismissesKeyboard(SwiftScrollDismissesKeyboard.Interactively);
+        Assert(root.ScrollDismissesKeyboard == SwiftScrollDismissesKeyboard.Interactively);
+        Throws<ArgumentOutOfRangeException>(() =>
+            root.WithScrollDismissesKeyboard((SwiftScrollDismissesKeyboard)9));
+        Throws<InvalidOperationException>(() =>
+            Views.VStack().WithScrollDismissesKeyboard(SwiftScrollDismissesKeyboard.Interactively));
+        Throws<InvalidOperationException>(() => _ = Views.VStack().ScrollDismissesKeyboard);
+        using var host = SwiftUIHost.CreateView(root);
+        Assert(host is NSView);
+        SwiftUIHost.DetachView(root, host);
+    }),
     ("real secure text and editor fields accept paired prompt colors", () =>
     {
         using var secure = Views.SecureField("Password")

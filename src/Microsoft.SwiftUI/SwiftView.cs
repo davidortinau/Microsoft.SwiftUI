@@ -1291,6 +1291,43 @@ public sealed class SwiftView : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Sets how dragging this Scroll dismisses the software keyboard (SwiftUI
+    /// <c>scrollDismissesKeyboard</c>), for example so a page with a multiline editor can put
+    /// the keyboard away. <see cref="SwiftScrollDismissesKeyboard.Automatic"/> (the default)
+    /// keeps the system's behavior; scrollable views inside the content (a TextEditor, a nested
+    /// Scroll) keep their own default. Set it before the Scroll is mounted.
+    /// </summary>
+    public SwiftView WithScrollDismissesKeyboard(SwiftScrollDismissesKeyboard mode)
+    {
+        RequireKind("scroll");
+        _native.ScrollDismissesKeyboard = mode switch
+        {
+            SwiftScrollDismissesKeyboard.Automatic => "",
+            SwiftScrollDismissesKeyboard.Immediately => "immediately",
+            SwiftScrollDismissesKeyboard.Interactively => "interactively",
+            SwiftScrollDismissesKeyboard.Never => "never",
+            _ => throw new ArgumentOutOfRangeException(nameof(mode))
+        };
+        return this;
+    }
+
+    /// <summary>The mode set by <see cref="WithScrollDismissesKeyboard"/>.</summary>
+    public SwiftScrollDismissesKeyboard ScrollDismissesKeyboard
+    {
+        get
+        {
+            RequireKind("scroll");
+            return _native.ScrollDismissesKeyboard switch
+            {
+                "immediately" => SwiftScrollDismissesKeyboard.Immediately,
+                "interactively" => SwiftScrollDismissesKeyboard.Interactively,
+                "never" => SwiftScrollDismissesKeyboard.Never,
+                _ => SwiftScrollDismissesKeyboard.Automatic
+            };
+        }
+    }
+
     public SwiftView WithMinimumHeight(double points)
     {
         RequireActive();
