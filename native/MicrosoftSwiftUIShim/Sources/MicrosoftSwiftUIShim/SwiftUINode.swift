@@ -158,6 +158,11 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var fillsHeight = false { willSet { objectWillChange.send() } }
     /// Lays the view out under the safe areas too (SwiftUI `ignoresSafeArea()`).
     @objc public var ignoresSafeArea = false { willSet { objectWillChange.send() } }
+    /// Opt-in SwiftUI `fixedSize(horizontal:vertical:)`: the view keeps its ideal width (or
+    /// height) whatever its container proposes, so a badge or a short button beside a flexible
+    /// title keeps its text on one line instead of taking an equal share of the row.
+    @objc public var fixedHorizontalSize = false { willSet { objectWillChange.send() } }
+    @objc public var fixedVerticalSize = false { willSet { objectWillChange.send() } }
     /// Edge of an `overlay` node's second child: "bottom" (default) or "top".
     @objc public var overlayEdge = "bottom" { willSet { objectWillChange.send() } }
     /// Opt-in VoiceOver announcement posted when the view appears or this text changes.
@@ -2083,6 +2088,8 @@ struct SwiftUINodeView: View {
             .frame(maxWidth: node.fillsWidth && node.maxWidth > 0 ? .infinity : nil,
                    alignment: horizontalAlignment)
             .opacity(node.opacity))
+            .modifier(FixedSizing(horizontal: node.fixedHorizontalSize,
+                                  vertical: node.fixedVerticalSize))
     }
 
     @ViewBuilder
@@ -2855,6 +2862,23 @@ struct ToggleLabelsHidden: ViewModifier {
     func body(content: Content) -> some View {
         if hidden {
             content.labelsHidden()
+        } else {
+            content
+        }
+    }
+}
+
+/// Opt-in `fixedSize(horizontal:vertical:)`: the view keeps its ideal width and/or height, so a
+/// badge or a short button beside a flexible title keeps its text on one line. A modifier keeps
+/// the node view's body type small.
+struct FixedSizing: ViewModifier {
+    let horizontal: Bool
+    let vertical: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if horizontal || vertical {
+            content.fixedSize(horizontal: horizontal, vertical: vertical)
         } else {
             content
         }

@@ -1162,6 +1162,8 @@ public sealed class SwiftView : IDisposable
         RequireActive();
         if (maxWidth is { } width && (!double.IsFinite(width) || width <= 0))
             throw new ArgumentOutOfRangeException(nameof(maxWidth));
+        if (_native.FixedHorizontalSize)
+            throw new InvalidOperationException("A view that keeps its ideal width cannot be flexible.");
         if (!Enum.IsDefined(alignment))
             throw new ArgumentOutOfRangeException(nameof(alignment));
         _native.MaxWidth = maxWidth ?? 0;
@@ -1197,11 +1199,38 @@ public sealed class SwiftView : IDisposable
     /// <summary>Whether <see cref="WithIgnoresSafeArea"/> is on.</summary>
     public bool IgnoresSafeArea => _native.IgnoresSafeArea;
 
+    /// <summary>
+    /// Keeps the view at its ideal width and/or height whatever its container proposes
+    /// (SwiftUI <c>fixedSize(horizontal:vertical:)</c>). In a row with a flexible title, a
+    /// badge or a short button keeps its text on one line instead of taking an equal share of
+    /// the row and wrapping. Off by default. A flexible axis (<see cref="WithFlexibleWidth"/>,
+    /// <see cref="WithFlexibleHeight"/>) cannot also be fixed.
+    /// </summary>
+    public SwiftView WithFixedSize(bool horizontal = true, bool vertical = false)
+    {
+        RequireActive();
+        if (horizontal && _native.FillsWidth)
+            throw new InvalidOperationException("A flexible-width view cannot keep its ideal width.");
+        if (vertical && _native.FillsHeight)
+            throw new InvalidOperationException("A flexible-height view cannot keep its ideal height.");
+        _native.FixedHorizontalSize = horizontal;
+        _native.FixedVerticalSize = vertical;
+        return this;
+    }
+
+    /// <summary>Whether <see cref="WithFixedSize"/> keeps this view's ideal width.</summary>
+    public bool FixedHorizontalSize => _native.FixedHorizontalSize;
+
+    /// <summary>Whether <see cref="WithFixedSize"/> keeps this view's ideal height.</summary>
+    public bool FixedVerticalSize => _native.FixedVerticalSize;
+
     public bool FillsHeight => _native.FillsHeight;
 
     public SwiftView WithFlexibleHeight(bool enabled = true)
     {
         RequireActive();
+        if (enabled && _native.FixedVerticalSize)
+            throw new InvalidOperationException("A view that keeps its ideal height cannot be flexible.");
         _native.FillsHeight = enabled;
         return this;
     }

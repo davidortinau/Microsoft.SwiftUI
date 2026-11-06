@@ -1079,6 +1079,31 @@ var cases = new (string Name, Action Test)[]
         Assert(host is NSView);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("a view can keep its ideal size, opt-in, never on a flexible axis", () =>
+    {
+        using var badge = Views.Text("Failed");
+        Assert(!badge.FixedHorizontalSize && !badge.FixedVerticalSize);
+        Assert(ReferenceEquals(badge.WithFixedSize(), badge));
+        Assert(badge.FixedHorizontalSize && !badge.FixedVerticalSize);
+        badge.WithFixedSize(horizontal: false, vertical: true);
+        Assert(!badge.FixedHorizontalSize && badge.FixedVerticalSize);
+        badge.WithFixedSize(false);
+        Assert(!badge.FixedHorizontalSize && !badge.FixedVerticalSize);
+        Throws<InvalidOperationException>(() => Views.Text("x").WithFlexibleWidth().WithFixedSize());
+        Throws<InvalidOperationException>(() => Views.Text("x").WithFixedSize().WithFlexibleWidth());
+        Throws<InvalidOperationException>(() =>
+            Views.Text("x").WithFlexibleHeight().WithFixedSize(false, vertical: true));
+        Throws<InvalidOperationException>(() =>
+            Views.Text("x").WithFixedSize(false, vertical: true).WithFlexibleHeight());
+        // A flexible width with a fixed height (and the reverse) is allowed.
+        using var mixed = Views.Text("x").WithFlexibleWidth().WithFixedSize(false, vertical: true);
+        Assert(mixed.FixedVerticalSize && !mixed.FixedHorizontalSize);
+        using var row = Views.HStack(Views.Text("A long title").WithFlexibleWidth(),
+            Views.Text("Failed").WithFixedSize());
+        using var host = SwiftUIHost.CreateView(row);
+        Assert(host is NSView);
+        SwiftUIHost.DetachView(row, host);
+    }),
     ("keyboard dismissal by dragging is opt-in and requires a Scroll", () =>
     {
         using var root = Views.Scroll(Views.TextEditor("Draft"), Views.Text("Below"));

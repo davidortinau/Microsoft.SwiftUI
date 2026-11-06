@@ -321,6 +321,12 @@ interface MSUNode
     [Export("ignoresSafeArea")]
     bool IgnoresSafeArea { get; set; }
 
+    [Export("fixedHorizontalSize")]
+    bool FixedHorizontalSize { get; set; }
+
+    [Export("fixedVerticalSize")]
+    bool FixedVerticalSize { get; set; }
+
     [Export("overlayEdge")]
     string OverlayEdge { get; set; }
 
