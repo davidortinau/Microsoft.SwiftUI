@@ -727,6 +727,40 @@ public sealed class SwiftView : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Sets when an iOS 26 tab bar minimizes (SwiftUI <c>tabBarMinimizeBehavior</c>); earlier
+    /// iOS and other platforms ignore it. Set it before the tab view is mounted.
+    /// </summary>
+    public SwiftView WithTabBarMinimizeBehavior(SwiftTabBarMinimizeBehavior behavior)
+    {
+        RequireKind("tabView");
+        _native.TabBarMinimizeBehavior = behavior switch
+        {
+            SwiftTabBarMinimizeBehavior.Automatic => "",
+            SwiftTabBarMinimizeBehavior.OnScrollDown => "onScrollDown",
+            SwiftTabBarMinimizeBehavior.OnScrollUp => "onScrollUp",
+            SwiftTabBarMinimizeBehavior.Never => "never",
+            _ => throw new ArgumentOutOfRangeException(nameof(behavior))
+        };
+        return this;
+    }
+
+    /// <summary>The behavior set by <see cref="WithTabBarMinimizeBehavior"/>.</summary>
+    public SwiftTabBarMinimizeBehavior TabBarMinimizeBehavior
+    {
+        get
+        {
+            RequireKind("tabView");
+            return _native.TabBarMinimizeBehavior switch
+            {
+                "onScrollDown" => SwiftTabBarMinimizeBehavior.OnScrollDown,
+                "onScrollUp" => SwiftTabBarMinimizeBehavior.OnScrollUp,
+                "never" => SwiftTabBarMinimizeBehavior.Never,
+                _ => SwiftTabBarMinimizeBehavior.Automatic
+            };
+        }
+    }
+
     /// <summary>The style set by <see cref="WithTabViewStyle"/> (<see cref="SwiftTabViewStyle.Automatic"/> unless set).</summary>
     public SwiftTabViewStyle TabViewStyle
     {
@@ -1149,6 +1183,20 @@ public sealed class SwiftView : IDisposable
     /// inside a Scroll the proposed height is the content's own.
     /// </summary>
     /// <summary>Whether <see cref="WithFlexibleHeight"/> is on.</summary>
+    /// <summary>
+    /// Lays the view out under the safe areas too (SwiftUI <c>ignoresSafeArea()</c>), for
+    /// example a full-screen launch surface centred on the whole screen. Off by default.
+    /// </summary>
+    public SwiftView WithIgnoresSafeArea(bool enabled = true)
+    {
+        RequireActive();
+        _native.IgnoresSafeArea = enabled;
+        return this;
+    }
+
+    /// <summary>Whether <see cref="WithIgnoresSafeArea"/> is on.</summary>
+    public bool IgnoresSafeArea => _native.IgnoresSafeArea;
+
     public bool FillsHeight => _native.FillsHeight;
 
     public SwiftView WithFlexibleHeight(bool enabled = true)

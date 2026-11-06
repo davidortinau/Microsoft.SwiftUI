@@ -141,6 +141,9 @@ interface MSUNode
     [Export("tabViewStyle")]
     string TabViewStyle { get; set; }
 
+    [Export("tabBarMinimizeBehavior")]
+    string TabBarMinimizeBehavior { get; set; }
+
     [Export("route")]
     string Route { get; set; }
 
@@ -314,6 +317,9 @@ interface MSUNode
 
     [Export("fillsHeight")]
     bool FillsHeight { get; set; }
+
+    [Export("ignoresSafeArea")]
+    bool IgnoresSafeArea { get; set; }
 
     [Export("overlayEdge")]
     string OverlayEdge { get; set; }

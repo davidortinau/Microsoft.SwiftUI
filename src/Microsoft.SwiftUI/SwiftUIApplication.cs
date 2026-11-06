@@ -48,6 +48,16 @@ public enum SwiftTabRole
     Search
 }
 
+/// <summary>When an iOS 26 tab bar minimizes (SwiftUI <c>TabBarMinimizeBehavior</c>); other platforms ignore it.</summary>
+public enum SwiftTabBarMinimizeBehavior
+{
+    Automatic,
+    /// <summary>The tab bar shrinks while content scrolls down and returns on scroll up.</summary>
+    OnScrollDown,
+    OnScrollUp,
+    Never
+}
+
 /// <summary>A tab view's style (SwiftUI <c>TabViewStyle</c>).</summary>
 public enum SwiftTabViewStyle
 {

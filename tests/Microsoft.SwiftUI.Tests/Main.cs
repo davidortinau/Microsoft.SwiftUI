@@ -1379,6 +1379,45 @@ var cases = new (string Name, Action Test)[]
         Assert(tabs.SelectedIndex == 1 && sam.IsTabHidden);
         SwiftUIHost.DetachView(tabs, host);
     }),
+    ("tab bar minimize behavior, the busy overlay action and asset images", () =>
+    {
+        var study = Views.Tab("Study", "graduationcap", Views.NavigationStack(Views.Text("Study")));
+        using var tabs = Views.TabView(0, _ => { }, study);
+        Assert(tabs.TabBarMinimizeBehavior == SwiftTabBarMinimizeBehavior.Automatic);
+        Assert(ReferenceEquals(tabs.WithTabBarMinimizeBehavior(SwiftTabBarMinimizeBehavior.OnScrollDown), tabs)
+            && tabs.TabBarMinimizeBehavior == SwiftTabBarMinimizeBehavior.OnScrollDown);
+        tabs.WithTabBarMinimizeBehavior(SwiftTabBarMinimizeBehavior.Never);
+        Assert(tabs.TabBarMinimizeBehavior == SwiftTabBarMinimizeBehavior.Never);
+        tabs.WithTabBarMinimizeBehavior(SwiftTabBarMinimizeBehavior.OnScrollDown);
+        Throws<ArgumentOutOfRangeException>(() =>
+            tabs.WithTabBarMinimizeBehavior((SwiftTabBarMinimizeBehavior)9));
+        Throws<InvalidOperationException>(() =>
+            study.WithTabBarMinimizeBehavior(SwiftTabBarMinimizeBehavior.OnScrollDown));
+        using var host = SwiftUIHost.CreateView(tabs);
+        Assert(host is NSView);
+        SwiftUIHost.DetachView(tabs, host);
+
+        var cancel = Views.Button("Cancel", () => { }).WithHidden(true);
+        using var overlay = Views.StarterBlockingOverlay(Views.Text("Content"), "Checking", cancel);
+        Assert(overlay.Children.Count == 2 && ReferenceEquals(overlay.Children[1], cancel));
+        Throws<ArgumentException>(() =>
+            Views.StarterBlockingOverlay(Views.Text("Content"), "Checking", Views.Text("Not a button")));
+        overlay.IsPresented = true;
+        using var overlayHost = SwiftUIHost.CreateView(overlay);
+        Assert(overlayHost is NSView);
+        cancel.WithHidden(false);
+        SwiftUIHost.DetachView(overlay, overlayHost);
+
+        using var logo = Views.AssetImage("LaunchLogo");
+        Assert(logo.Kind == "assetImage" && logo.Text == "");
+        Assert(!logo.IgnoresSafeArea && ReferenceEquals(logo.WithIgnoresSafeArea(), logo)
+            && logo.IgnoresSafeArea);
+        logo.WithIgnoresSafeArea(false);
+        Assert(!logo.IgnoresSafeArea);
+        Throws<ArgumentException>(() => Views.AssetImage(" "));
+        using var logoHost = SwiftUIHost.CreateView(Views.VStack(Views.AssetImage("Missing", "Logo")));
+        Assert(logoHost is NSView);
+    }),
     ("navigation locks Back and updates destination title", () =>
     {
         using var stack = Views.NavigationStack(Views.Text("Root"));

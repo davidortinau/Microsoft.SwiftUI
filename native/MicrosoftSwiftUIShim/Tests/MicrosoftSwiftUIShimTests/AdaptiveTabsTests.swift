@@ -89,4 +89,15 @@ final class AdaptiveTabsTests: XCTestCase {
         XCTAssertEqual(changes, 0)
         observation.cancel()
     }
+
+    @MainActor
+    func testMinimizeBehaviorAloneSelectsTheAdaptiveTabView() {
+        let tabs = MSUBridge.makeNode(kind: "tabView")
+        tabs.insertChild(tab("Study", "graduationcap"), at: 0)
+        XCTAssertFalse(tabs.usesAdaptiveTabs)
+        tabs.tabBarMinimizeBehavior = "onScrollDown"
+        XCTAssertTrue(tabs.usesAdaptiveTabs)
+        tabs.tabBarMinimizeBehavior = ""
+        XCTAssertFalse(tabs.usesAdaptiveTabs)
+    }
 }

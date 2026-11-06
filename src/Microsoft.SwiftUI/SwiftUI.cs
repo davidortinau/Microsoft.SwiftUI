@@ -285,6 +285,19 @@ public static class SwiftUI
         return cover;
     }
 
+    /// <summary>
+    /// An image from the app's asset catalog (SwiftUI <c>Image(name)</c>) at its own size, for
+    /// example the launch screen's logo. An empty label makes it decorative.
+    /// </summary>
+    public static SwiftView AssetImage(string name, string accessibilityLabel = "")
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(accessibilityLabel);
+        var node = Create("assetImage", accessibilityLabel);
+        node.Native.ImageName = name;
+        return node;
+    }
+
     public static SwiftView Image(string systemName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(systemName);
@@ -352,6 +365,22 @@ public static class SwiftUI
         ArgumentException.ThrowIfNullOrWhiteSpace(status);
         var overlay = Create("starterOverlay", status);
         overlay.Attach(content);
+        return overlay;
+    }
+
+    /// <summary>
+    /// The busy overlay with one action under its status (for example Cancel), the only
+    /// control reachable while the overlay is up. Hide the action
+    /// (<see cref="SwiftView.WithHidden(bool, SwiftHideTransition, double)"/>) while the busy work cannot be cancelled.
+    /// </summary>
+    public static SwiftView StarterBlockingOverlay(SwiftView content, string status, SwiftView action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        if (action.Kind != "button")
+            throw new ArgumentException("The overlay action must be a Button.", nameof(action));
+        SwiftView.ValidateChildren([content, action]);
+        var overlay = StarterBlockingOverlay(content, status);
+        overlay.Attach(action);
         return overlay;
     }
 

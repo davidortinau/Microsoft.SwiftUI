@@ -75,9 +75,18 @@ public final class MSUNode: NSObject, ObservableObject {
             objectWillChange.send()
         }
     }
-    /// True when a tab view needs the iOS 18 `Tab` API: a style, a role or a hidden tab.
+    /// Tab bar minimize behavior (iOS 26): "" (automatic), "onScrollDown", "onScrollUp" or "never".
+    @objc public var tabBarMinimizeBehavior = "" {
+        willSet {
+            precondition(["", "onScrollDown", "onScrollUp", "never"].contains(newValue),
+                         "Unsupported tab bar minimize behavior: \(newValue)")
+            objectWillChange.send()
+        }
+    }
+    /// True when a tab view needs the iOS 18 `Tab` API: a style, a minimize behavior,
+    /// a role or a hidden tab.
     var usesAdaptiveTabs: Bool {
-        kind == "tabView" && (!tabViewStyle.isEmpty
+        kind == "tabView" && (!tabViewStyle.isEmpty || !tabBarMinimizeBehavior.isEmpty
             || children.contains { !$0.tabRole.isEmpty || $0.hasTabHiddenState })
     }
     /// A tab view draws each tab's title, symbol, role and visibility itself, so a
@@ -147,6 +156,8 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var maxWidth = 0.0 { willSet { objectWillChange.send() } }
     /// Opt-in `frame(maxHeight: .infinity)`: the view takes the height its container proposes.
     @objc public var fillsHeight = false { willSet { objectWillChange.send() } }
+    /// Lays the view out under the safe areas too (SwiftUI `ignoresSafeArea()`).
+    @objc public var ignoresSafeArea = false { willSet { objectWillChange.send() } }
     /// Edge of an `overlay` node's second child: "bottom" (default) or "top".
     @objc public var overlayEdge = "bottom" { willSet { objectWillChange.send() } }
     /// Opt-in VoiceOver announcement posted when the view appears or this text changes.
@@ -248,7 +259,7 @@ public final class MSUNode: NSObject, ObservableObject {
         precondition([
             "text", "inlineText", "button", "buttonGroup", "textField", "textEditor", "vstack", "hstack",
             "scroll", "list", "navigation", "navigationLink", "sheet", "inspector",
-            "image", "toggle", "slider", "picker", "navigationStack",
+            "image", "assetImage", "toggle", "slider", "picker", "navigationStack",
             "tabView", "tab", "form", "section", "secureField",
             "valuePicker", "searchable", "menu", "alert",
             "confirmationDialog", "grid", "horizontalGrid", "fileImporter", "toolbar",
@@ -1753,6 +1764,10 @@ private struct StarterBlockingOverlayNodeView: View {
                         .accessibilityIdentifier(node.automationId.isEmpty
                             ? "swiftui.starter.busy.status"
                             : node.automationId + ".status")
+                    // An optional action (for example Cancel) the busy content cannot offer.
+                    if node.children.count > 1 {
+                        SwiftUINodeView(node: node.children[1])
+                    }
                 }
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(node.automationId.isEmpty
@@ -2020,10 +2035,16 @@ struct SwiftUINodeView: View {
                    maxHeight: node.fillsHeight ? .infinity : nil,
                    alignment: horizontalAlignment)
 
-        return surface(padded)
+        return ignoringSafeArea(surface(padded)
             .frame(maxWidth: node.fillsWidth && node.maxWidth > 0 ? .infinity : nil,
                    alignment: horizontalAlignment)
-            .opacity(node.opacity)
+            .opacity(node.opacity))
+    }
+
+    @ViewBuilder
+    private func ignoringSafeArea<V: View>(_ view: V) -> some View {
+        if node.ignoresSafeArea { view.ignoresSafeArea() }
+        else { view }
     }
 
     @ViewBuilder
@@ -2495,6 +2516,13 @@ struct SwiftUINodeView: View {
             }
         case "image":
             return symbolImage
+        case "assetImage":
+            // An image from the app's asset catalog at its own size (for example the launch
+            // screen's logo); no label makes it decorative.
+            return AnyView(Image(node.imageName)
+                .accessibilityLabel(Text(node.text))
+                .accessibilityHidden(node.text.isEmpty)
+                .accessibilityIdentifier(node.automationId))
         case "photo":
             return erased {
                 PhotoNodeView(node: node)
