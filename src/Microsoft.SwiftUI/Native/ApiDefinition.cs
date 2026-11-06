@@ -129,6 +129,18 @@ interface MSUNode
     [Export("hidesTabBar")]
     bool HidesTabBar { get; set; }
 
+    [Export("tabRole")]
+    string TabRole { get; set; }
+
+    [Export("tabHidden")]
+    bool TabHidden { get; set; }
+
+    [Export("hasTabHiddenState")]
+    bool HasTabHiddenState { get; }
+
+    [Export("tabViewStyle")]
+    string TabViewStyle { get; set; }
+
     [Export("route")]
     string Route { get; set; }
 

@@ -671,6 +671,73 @@ public sealed class SwiftView : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Gives a <see cref="SwiftUI.Tab"/> a role. A tab view with a role, a hidden tab or a
+    /// style is drawn with the SwiftUI <c>Tab</c> API (iOS 18 / macOS 15); set it before
+    /// the tab view is mounted.
+    /// </summary>
+    public SwiftView WithTabRole(SwiftTabRole role)
+    {
+        RequireKind("tab");
+        if (!Enum.IsDefined(role))
+            throw new ArgumentOutOfRangeException(nameof(role));
+        _native.TabRole = role == SwiftTabRole.Search ? "search" : "";
+        return this;
+    }
+
+    /// <summary>The role set by <see cref="WithTabRole"/> (<see cref="SwiftTabRole.None"/> unless set).</summary>
+    public SwiftTabRole TabRole
+    {
+        get
+        {
+            RequireKind("tab");
+            return _native.TabRole == "search" ? SwiftTabRole.Search : SwiftTabRole.None;
+        }
+    }
+
+    /// <summary>
+    /// Leaves a <see cref="SwiftUI.Tab"/> out of the tab bar and sidebar while keeping its
+    /// index. Call it once before the tab view is mounted (with false to start visible);
+    /// later calls show or hide the tab in place.
+    /// </summary>
+    public SwiftView WithTabHidden(bool hidden = true)
+    {
+        RequireKind("tab");
+        _native.TabHidden = hidden;
+        return this;
+    }
+
+    /// <summary>Whether <see cref="WithTabHidden"/> hid this tab (false unless set).</summary>
+    public bool IsTabHidden
+    {
+        get
+        {
+            RequireKind("tab");
+            return _native.TabHidden;
+        }
+    }
+
+    /// <summary>Sets a <see cref="SwiftUI.TabView(int, Action{int}?, SwiftView[])"/> style; set it before the tab view is mounted.</summary>
+    public SwiftView WithTabViewStyle(SwiftTabViewStyle style)
+    {
+        RequireKind("tabView");
+        if (!Enum.IsDefined(style))
+            throw new ArgumentOutOfRangeException(nameof(style));
+        _native.TabViewStyle = style == SwiftTabViewStyle.SidebarAdaptable ? "sidebarAdaptable" : "";
+        return this;
+    }
+
+    /// <summary>The style set by <see cref="WithTabViewStyle"/> (<see cref="SwiftTabViewStyle.Automatic"/> unless set).</summary>
+    public SwiftTabViewStyle TabViewStyle
+    {
+        get
+        {
+            RequireKind("tabView");
+            return _native.TabViewStyle == "sidebarAdaptable"
+                ? SwiftTabViewStyle.SidebarAdaptable : SwiftTabViewStyle.Automatic;
+        }
+    }
+
     public SwiftView WithAccessibilityLabel(string label)
     {
         RequireActive();

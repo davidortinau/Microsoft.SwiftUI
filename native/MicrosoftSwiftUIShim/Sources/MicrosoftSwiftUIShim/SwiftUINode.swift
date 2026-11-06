@@ -51,6 +51,38 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var isEnabled = true { willSet { objectWillChange.send() } }
     @objc public var canNavigateBack = true { willSet { objectWillChange.send() } }
     @objc public var hidesTabBar = false { willSet { objectWillChange.send() } }
+    /// Tab role: "" (none) or "search". A search tab sits apart from the others
+    /// (iOS 26: the trailing slot of the tab bar) and keeps its own title and symbol.
+    @objc public var tabRole = "" {
+        willSet {
+            precondition(newValue.isEmpty || newValue == "search", "Unsupported tab role: \(newValue)")
+            objectWillChange.send()
+        }
+    }
+    /// A tab left out of the tab bar and sidebar (TabContent `hidden`); applied only once set.
+    @objc public var tabHidden = false {
+        willSet {
+            hasTabHiddenState = true
+            objectWillChange.send()
+        }
+    }
+    @objc public private(set) var hasTabHiddenState = false
+    /// Tab view style: "" (automatic) or "sidebarAdaptable" (a sidebar on iPad and Mac).
+    @objc public var tabViewStyle = "" {
+        willSet {
+            precondition(newValue.isEmpty || newValue == "sidebarAdaptable",
+                         "Unsupported tab view style: \(newValue)")
+            objectWillChange.send()
+        }
+    }
+    /// True when a tab view needs the iOS 18 `Tab` API: a style, a role or a hidden tab.
+    var usesAdaptiveTabs: Bool {
+        kind == "tabView" && (!tabViewStyle.isEmpty
+            || children.contains { !$0.tabRole.isEmpty || $0.hasTabHiddenState })
+    }
+    /// A tab view draws each tab's title, symbol, role and visibility itself, so a
+    /// change to a tab node is forwarded to the tab view.
+    private var tabObservations: [UUID: AnyCancellable] = [:]
     @objc public var route = "" { willSet { objectWillChange.send() } }
     @objc public var fontStyle = "" { willSet { objectWillChange.send() } }
     @objc public var fontSize = 0.0 { willSet { objectWillChange.send() } }
@@ -239,17 +271,25 @@ public final class MSUNode: NSObject, ObservableObject {
         precondition(kind != "inlineText" || (child.kind == "text" && children.count < 2),
                      "Inline text accepts only two Text nodes")
         children.insert(child, at: index)
+        if kind == "tabView" {
+            tabObservations[child.id] = child.objectWillChange.sink { [weak self] in
+                self?.objectWillChange.send()
+            }
+        }
     }
 
     @objc(removeChildAtIndex:)
     public func removeChild(at index: Int) {
         precondition(index >= 0 && index < children.count, "Child index out of range")
-        children.remove(at: index)
+        let child = children.remove(at: index)
+        tabObservations.removeValue(forKey: child.id)?.cancel()
     }
 
     @objc public func clearChildren() {
         children.removeAll()
         path.removeAll()
+        tabObservations.values.forEach { $0.cancel() }
+        tabObservations.removeAll()
     }
 
     @objc(appendRoute:)
@@ -2372,6 +2412,11 @@ struct SwiftUINodeView: View {
                 }
             }
         case "tabView":
+            if #available(iOS 18.0, macOS 15.0, *), node.usesAdaptiveTabs {
+                return erased {
+                    AdaptiveTabViewNodeView(node: node)
+                }
+            }
             return erased {
                 TabView(selection: Binding(
                     get: { node.selectedIndex },

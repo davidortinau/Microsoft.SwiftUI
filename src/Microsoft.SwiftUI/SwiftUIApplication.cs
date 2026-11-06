@@ -36,6 +36,26 @@ public enum SwiftPickerStyle
     Segmented
 }
 
+/// <summary>A tab's role (SwiftUI <c>TabRole</c>).</summary>
+public enum SwiftTabRole
+{
+    /// <summary>An ordinary tab.</summary>
+    None,
+    /// <summary>
+    /// SwiftUI <c>TabRole.search</c>: the tab sits apart from the others (iOS 26:
+    /// the trailing slot of the tab bar) and keeps its own title and symbol.
+    /// </summary>
+    Search
+}
+
+/// <summary>A tab view's style (SwiftUI <c>TabViewStyle</c>).</summary>
+public enum SwiftTabViewStyle
+{
+    Automatic,
+    /// <summary>SwiftUI <c>.sidebarAdaptable</c>: a tab bar on iPhone, a tab bar that becomes a sidebar on iPad and Mac.</summary>
+    SidebarAdaptable
+}
+
 public enum SwiftColorScheme
 {
     System = 0,

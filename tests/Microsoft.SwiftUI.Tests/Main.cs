@@ -1346,6 +1346,39 @@ var cases = new (string Name, Action Test)[]
         using var host = SwiftUIHost.CreateView(root);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("tab roles, hidden tabs and the sidebar-adaptable style are opt-in", () =>
+    {
+        var study = Views.Tab("Study", "graduationcap", Views.NavigationStack(Views.Text("Study")))
+            .WithAccessibilityIdentifier("bridge.tab.study");
+        var sam = Views.Tab("Sam", "bubble.left.and.bubble.right.fill",
+            Views.NavigationStack(Views.Text("Sam")));
+        Assert(study.TabRole == SwiftTabRole.None && !study.IsTabHidden);
+        Assert(ReferenceEquals(sam.WithTabRole(SwiftTabRole.Search), sam)
+            && sam.TabRole == SwiftTabRole.Search);
+        Assert(ReferenceEquals(sam.WithTabHidden(), sam) && sam.IsTabHidden);
+        sam.WithTabHidden(false);
+        Assert(!sam.IsTabHidden);
+        sam.WithTabRole(SwiftTabRole.None);
+        Assert(sam.TabRole == SwiftTabRole.None);
+        sam.WithTabRole(SwiftTabRole.Search);
+        Throws<ArgumentOutOfRangeException>(() => sam.WithTabRole((SwiftTabRole)7));
+        using var tabs = Views.TabView(0, _ => { }, study, sam);
+        Assert(tabs.TabViewStyle == SwiftTabViewStyle.Automatic);
+        Assert(ReferenceEquals(tabs.WithTabViewStyle(SwiftTabViewStyle.SidebarAdaptable), tabs)
+            && tabs.TabViewStyle == SwiftTabViewStyle.SidebarAdaptable);
+        Throws<ArgumentOutOfRangeException>(() => tabs.WithTabViewStyle((SwiftTabViewStyle)9));
+        Throws<InvalidOperationException>(() => tabs.WithTabRole(SwiftTabRole.Search));
+        Throws<InvalidOperationException>(() => tabs.WithTabHidden());
+        Throws<InvalidOperationException>(() => study.WithTabViewStyle(SwiftTabViewStyle.Automatic));
+        Throws<InvalidOperationException>(() => Views.Text("Plain").WithTabRole(SwiftTabRole.Search));
+        Assert(study.AccessibilityIdentifier == "bridge.tab.study");
+        using var host = SwiftUIHost.CreateView(tabs);
+        Assert(host is NSView);
+        sam.WithTabHidden();
+        tabs.SelectedIndex = 1;
+        Assert(tabs.SelectedIndex == 1 && sam.IsTabHidden);
+        SwiftUIHost.DetachView(tabs, host);
+    }),
     ("navigation locks Back and updates destination title", () =>
     {
         using var stack = Views.NavigationStack(Views.Text("Root"));
