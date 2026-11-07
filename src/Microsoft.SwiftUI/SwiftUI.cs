@@ -497,8 +497,7 @@ public static class SwiftUI
     public static SwiftView Menu(string title, params SwiftView[] actions)
     {
         SwiftView.ValidateChildren(actions);
-        if (actions.Length == 0 || actions.Any(action => action.Kind != "button"))
-            throw new ArgumentException("A menu needs one or more Button actions.", nameof(actions));
+        ValidateMenuActions(actions);
         var node = Create("menu", title);
         foreach (var action in actions)
             node.Attach(action);
@@ -512,13 +511,30 @@ public static class SwiftUI
         SwiftView.ValidateChildren([label, .. actions]);
         if (label.Kind == "button")
             throw new ArgumentException("A menu label cannot be a Button.", nameof(label));
-        if (actions.Length == 0 || actions.Any(action => action.Kind != "button"))
-            throw new ArgumentException("A menu needs one or more Button actions.", nameof(actions));
+        ValidateMenuActions(actions);
         var node = new SwiftView("menu");
         node.Attach(label);
         foreach (var action in actions)
             node.Attach(action);
         return node;
+    }
+
+    /// <summary>
+    /// A menu holds Buttons, Dividers, and titled Sections of Buttons (SwiftUI shows a Section's
+    /// title above its group), with at least one Button.
+    /// </summary>
+    private static void ValidateMenuActions(SwiftView[] actions)
+    {
+        static bool IsItem(SwiftView action) => action.Kind switch
+        {
+            "button" or "divider" => true,
+            "section" => action.Children.Count > 0 && action.Children.All(child => child.Kind == "button"),
+            _ => false,
+        };
+        if (!actions.All(IsItem) || !actions.Any(action => action.Kind is "button" or "section"))
+            throw new ArgumentException(
+                "A menu needs one or more Button actions (Buttons, Dividers, or Sections of Buttons).",
+                nameof(actions));
     }
 
     public static SwiftView Toolbar(SwiftView content, params SwiftView[] actions)

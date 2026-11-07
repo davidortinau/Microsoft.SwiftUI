@@ -181,6 +181,23 @@ var cases = new (string Name, Action Test)[]
         Throws<ArgumentException>(() => Views.Menu(
             Views.Button("Invalid label", () => { }), Views.Button("Option", () => { })));
         Throws<ArgumentException>(() => Views.Menu(Views.Text("Label"), Views.Text("Not an action")));
+
+        // Titled sections of buttons and dividers group a menu's actions.
+        var slow = Views.Button("80%", () => { });
+        var pause = Views.Button("1 s", () => { });
+        using var grouped = Views.Menu(Views.Image("slider.horizontal.3"),
+            Views.Section("Speed", Views.Button("100%", () => { }), slow),
+            Views.Divider(),
+            Views.Section("Pause", pause));
+        Assert(grouped.Children.Count == 4 && grouped.Children[1].Kind == "section" &&
+               grouped.Children[1].Text == "Speed" && grouped.Children[1].Children[1] == slow &&
+               grouped.Children[2].Kind == "divider" && grouped.Children[3].Children[0] == pause);
+        using (var groupedHost = SwiftUIHost.CreateView(grouped))
+            SwiftUIHost.DetachView(grouped, groupedHost);
+        Throws<ArgumentException>(() => Views.Menu("Only a divider", Views.Divider()));
+        Throws<ArgumentException>(() => Views.Menu("Empty section", Views.Section("Nothing")));
+        Throws<ArgumentException>(() => Views.Menu("Text in a section",
+            Views.Section("Speed", Views.Text("Not an action"))));
     }),
     ("photo bytes decode without symbols or answer-bearing metadata", () =>
     {
