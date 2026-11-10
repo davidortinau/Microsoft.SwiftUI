@@ -1146,6 +1146,32 @@ var cases = new (string Name, Action Test)[]
         Assert(host is NSView);
         SwiftUIHost.DetachView(row, host);
     }),
+    ("a toolbar button's symbol, label and selected state read back and change in place", () =>
+    {
+        using var icon = Views.Image("line.3.horizontal.decrease.circle");
+        Assert(icon.SystemImageName == "line.3.horizontal.decrease.circle");
+        icon.SystemImageName = "line.3.horizontal.decrease.circle.fill";
+        Assert(icon.SystemImageName == "line.3.horizontal.decrease.circle.fill");
+        Throws<ArgumentException>(() => icon.SystemImageName = " ");
+        Throws<InvalidOperationException>(() => _ = Views.Text("x").SystemImageName);
+        using var button = Views.Button(Views.Image("list.bullet"), () => { });
+        Assert(button.AccessibilityLabel == "" && !button.AccessibilitySelected);
+        button.WithAccessibilityLabel("List view").WithAccessibilitySelected();
+        Assert(button.AccessibilityLabel == "List view" && button.AccessibilitySelected);
+        button.WithAccessibilitySelected(false);
+        Assert(!button.AccessibilitySelected);
+        Throws<InvalidOperationException>(() => _ = Views.Text("x").AccessibilitySelected);
+        // Any view reads its label back; the slider-only setter keeps its rule.
+        using var text = Views.Text("Known").WithAccessibilityLabel("Known words");
+        Assert(text.AccessibilityLabel == "Known words");
+        Throws<InvalidOperationException>(() => text.AccessibilityLabel = "Other");
+        using var toolbar = Views.Toolbar(Views.Text("Page"), button);
+        using var host = SwiftUIHost.CreateView(toolbar);
+        Assert(host is NSView);
+        button.Children[0].SystemImageName = "square.grid.3x3";
+        Assert(button.Children[0].SystemImageName == "square.grid.3x3");
+        SwiftUIHost.DetachView(toolbar, host);
+    }),
     ("keyboard dismissal by dragging is opt-in and requires a Scroll", () =>
     {
         using var root = Views.Scroll(Views.TextEditor("Draft"), Views.Text("Below"));

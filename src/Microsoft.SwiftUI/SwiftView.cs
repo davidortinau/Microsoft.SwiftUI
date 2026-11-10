@@ -70,9 +70,14 @@ public sealed class SwiftView : IDisposable
         set { RequireActive(); _native.AutomationId = value ?? throw new ArgumentNullException(nameof(value)); }
     }
 
+    /// <summary>
+    /// The label set by <see cref="WithAccessibilityLabel"/> on any view, or empty, so a host
+    /// can compare a rebuilt view with the one on screen. Setting it here is for a slider (which
+    /// needs a non-empty label); other views use <see cref="WithAccessibilityLabel"/>.
+    /// </summary>
     public string AccessibilityLabel
     {
-        get { RequireKind("slider"); return _native.AccessibilityLabelText; }
+        get { RequireActive(); return _native.AccessibilityLabelText; }
         set
         {
             RequireKind("slider");
@@ -253,6 +258,27 @@ public sealed class SwiftView : IDisposable
         RequireKind("button");
         _native.AccessibilitySelected = selected;
         return this;
+    }
+
+    /// <summary>Whether <see cref="WithAccessibilitySelected"/> marks this button selected.</summary>
+    public bool AccessibilitySelected
+    {
+        get { RequireKind("button"); return _native.AccessibilitySelected; }
+    }
+
+    /// <summary>
+    /// The SF Symbol an <see cref="SwiftUI.Image"/> shows. Settable in place, so a toolbar button
+    /// can change its symbol (a filled filter icon once a filter is on) without being rebuilt.
+    /// </summary>
+    public string SystemImageName
+    {
+        get { RequireKind("image"); return _native.ImageName; }
+        set
+        {
+            RequireKind("image");
+            ArgumentException.ThrowIfNullOrWhiteSpace(value);
+            _native.ImageName = value;
+        }
     }
 
     public SwiftView OnFocusChanged(Action<bool> handler)
