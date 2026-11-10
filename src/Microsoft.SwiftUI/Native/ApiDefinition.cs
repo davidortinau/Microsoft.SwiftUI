@@ -327,6 +327,9 @@ interface MSUNode
     [Export("fixedVerticalSize")]
     bool FixedVerticalSize { get; set; }
 
+    [Export("fixedWidth")]
+    double FixedWidth { get; set; }
+
     [Export("overlayEdge")]
     string OverlayEdge { get; set; }
 

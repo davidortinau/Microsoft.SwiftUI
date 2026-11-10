@@ -1121,6 +1121,31 @@ var cases = new (string Name, Action Test)[]
         Assert(host is NSView);
         SwiftUIHost.DetachView(row, host);
     }),
+    ("a view can have a fixed width, opt-in, never with a flexible or ideal width", () =>
+    {
+        using var column = Views.VStack(Views.Text("Filters"));
+        Assert(column.FixedWidth is null);
+        Assert(ReferenceEquals(column.WithFixedWidth(280), column));
+        Assert(column.FixedWidth == 280);
+        column.WithFixedWidth(null);
+        Assert(column.FixedWidth is null);
+        Throws<ArgumentOutOfRangeException>(() => Views.Text("x").WithFixedWidth(0));
+        Throws<ArgumentOutOfRangeException>(() => Views.Text("x").WithFixedWidth(-1));
+        Throws<ArgumentOutOfRangeException>(() => Views.Text("x").WithFixedWidth(double.NaN));
+        Throws<InvalidOperationException>(() => Views.Text("x").WithFlexibleWidth().WithFixedWidth(100));
+        Throws<InvalidOperationException>(() => Views.Text("x").WithFixedWidth(100).WithFlexibleWidth());
+        Throws<InvalidOperationException>(() => Views.Text("x").WithFixedSize().WithFixedWidth(100));
+        Throws<InvalidOperationException>(() => Views.Text("x").WithFixedWidth(100).WithFixedSize());
+        // A fixed width with a flexible height (a full-height sidebar column) is allowed.
+        using var sidebar = Views.Scroll(Views.Text("Sort")).WithFixedWidth(300).WithFlexibleHeight();
+        Assert(sidebar.FixedWidth == 300 && sidebar.FillsHeight);
+        using var row = Views.HStack(
+            Views.Scroll(Views.Text("Sort")).WithFixedWidth(300).WithFlexibleHeight(),
+            Views.Text("Results").WithFlexibleWidth());
+        using var host = SwiftUIHost.CreateView(row);
+        Assert(host is NSView);
+        SwiftUIHost.DetachView(row, host);
+    }),
     ("keyboard dismissal by dragging is opt-in and requires a Scroll", () =>
     {
         using var root = Views.Scroll(Views.TextEditor("Draft"), Views.Text("Below"));

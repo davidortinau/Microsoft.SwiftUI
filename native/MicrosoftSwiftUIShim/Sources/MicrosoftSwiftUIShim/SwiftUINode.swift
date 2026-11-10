@@ -163,6 +163,9 @@ public final class MSUNode: NSObject, ObservableObject {
     /// title keeps its text on one line instead of taking an equal share of the row.
     @objc public var fixedHorizontalSize = false { willSet { objectWillChange.send() } }
     @objc public var fixedVerticalSize = false { willSet { objectWillChange.send() } }
+    /// Opt-in SwiftUI `frame(width:)` in points (0 = none): the view is exactly this wide
+    /// whatever its container proposes, for example a fixed sidebar column beside a flexible one.
+    @objc public var fixedWidth = 0.0 { willSet { objectWillChange.send() } }
     /// Edge of an `overlay` node's second child: "bottom" (default) or "top".
     @objc public var overlayEdge = "bottom" { willSet { objectWillChange.send() } }
     /// Opt-in VoiceOver announcement posted when the view appears or this text changes.
@@ -2079,6 +2082,7 @@ struct SwiftUINodeView: View {
                 bottom: node.paddingPoints + node.paddingBottom,
                 trailing: node.paddingPoints + node.paddingRight))
             .frame(minHeight: node.minimumHeight > 0 ? node.minimumHeight : nil)
+            .modifier(FixedWidthFrame(width: node.fixedWidth, alignment: horizontalAlignment))
             .frame(maxWidth: node.fillsWidth
                 ? node.maxWidth > 0 ? node.maxWidth : .infinity : nil,
                    maxHeight: node.fillsHeight ? .infinity : nil,
@@ -2879,6 +2883,23 @@ struct FixedSizing: ViewModifier {
     func body(content: Content) -> some View {
         if horizontal || vertical {
             content.fixedSize(horizontal: horizontal, vertical: vertical)
+        } else {
+            content
+        }
+    }
+}
+
+/// Opt-in `frame(width:)`: the view is exactly this wide whatever its container proposes. No
+/// frame at all when off, so existing views keep their layout. A modifier keeps the node view's
+/// body type small.
+struct FixedWidthFrame: ViewModifier {
+    let width: Double
+    let alignment: Alignment
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if width > 0 {
+            content.frame(width: CGFloat(width), alignment: alignment)
         } else {
             content
         }

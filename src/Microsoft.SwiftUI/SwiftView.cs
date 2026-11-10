@@ -1164,6 +1164,8 @@ public sealed class SwiftView : IDisposable
             throw new ArgumentOutOfRangeException(nameof(maxWidth));
         if (_native.FixedHorizontalSize)
             throw new InvalidOperationException("A view that keeps its ideal width cannot be flexible.");
+        if (_native.FixedWidth > 0)
+            throw new InvalidOperationException("A view with a fixed width cannot be flexible.");
         if (!Enum.IsDefined(alignment))
             throw new ArgumentOutOfRangeException(nameof(alignment));
         _native.MaxWidth = maxWidth ?? 0;
@@ -1211,12 +1213,41 @@ public sealed class SwiftView : IDisposable
         RequireActive();
         if (horizontal && _native.FillsWidth)
             throw new InvalidOperationException("A flexible-width view cannot keep its ideal width.");
+        if (horizontal && _native.FixedWidth > 0)
+            throw new InvalidOperationException("A view with a fixed width cannot keep its ideal width.");
         if (vertical && _native.FillsHeight)
             throw new InvalidOperationException("A flexible-height view cannot keep its ideal height.");
         _native.FixedHorizontalSize = horizontal;
         _native.FixedVerticalSize = vertical;
         return this;
     }
+
+    /// <summary>
+    /// Makes the view exactly <paramref name="width"/> points wide whatever its container
+    /// proposes (SwiftUI <c>frame(width:)</c>), for example a fixed sidebar column beside a
+    /// flexible one. Content narrower than the width sits at its leading edge. Null removes it.
+    /// Off by default. A
+    /// flexible-width view (<see cref="WithFlexibleWidth"/>) or one that keeps its ideal width
+    /// (<see cref="WithFixedSize"/>) cannot also have a fixed width; a flexible height can.
+    /// </summary>
+    public SwiftView WithFixedWidth(double? width)
+    {
+        RequireActive();
+        if (width is { } value)
+        {
+            if (!double.IsFinite(value) || value <= 0)
+                throw new ArgumentOutOfRangeException(nameof(width));
+            if (_native.FillsWidth)
+                throw new InvalidOperationException("A flexible-width view cannot have a fixed width.");
+            if (_native.FixedHorizontalSize)
+                throw new InvalidOperationException("A view that keeps its ideal width cannot have a fixed width.");
+        }
+        _native.FixedWidth = width ?? 0;
+        return this;
+    }
+
+    /// <summary>The width <see cref="WithFixedWidth"/> set, or null.</summary>
+    public double? FixedWidth => _native.FixedWidth > 0 ? _native.FixedWidth : null;
 
     /// <summary>Whether <see cref="WithFixedSize"/> keeps this view's ideal width.</summary>
     public bool FixedHorizontalSize => _native.FixedHorizontalSize;
