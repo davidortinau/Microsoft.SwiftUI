@@ -54,6 +54,14 @@ final class SplitViewTests: XCTestCase {
     }
 
     @MainActor
+    func testAViewCanBeLeftOutInACompactWidth() {
+        let button = MSUBridge.makeNode(kind: "button")
+        XCTAssertFalse(button.hiddenInCompactWidth)
+        button.hiddenInCompactWidth = true
+        _ = SwiftUINodeView(node: button).body
+    }
+
+    @MainActor
     func testTabBarOnlyStyleSelectsTheTabAPI() {
         let tabs = MSUBridge.makeNode(kind: "tabView")
         let tab = MSUBridge.makeNode(kind: "tab")

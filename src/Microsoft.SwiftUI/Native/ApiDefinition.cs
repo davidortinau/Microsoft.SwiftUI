@@ -90,6 +90,9 @@ interface MSUNode
     [Export("inspectorMaxWidth")]
     double InspectorMaxWidth { get; set; }
 
+    [Export("hiddenInCompactWidth")]
+    bool HiddenInCompactWidth { get; set; }
+
     [Export("hidesTabBarOnlyInCompactWidth")]
     bool HidesTabBarOnlyInCompactWidth { get; set; }
 

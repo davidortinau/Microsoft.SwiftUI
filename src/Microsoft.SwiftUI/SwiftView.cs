@@ -709,6 +709,21 @@ public sealed class SwiftView : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Leaves this view out in a compact horizontal size class (iPhone, the folded iPhone Duo):
+    /// for a control that only makes sense beside other columns, such as a split view's
+    /// full-screen button. Off by default.
+    /// </summary>
+    public SwiftView WithHiddenInCompactWidth(bool hidden = true)
+    {
+        RequireActive();
+        _native.HiddenInCompactWidth = hidden;
+        return this;
+    }
+
+    /// <summary>Whether <see cref="WithHiddenInCompactWidth"/> is on.</summary>
+    public bool HiddenInCompactWidth { get { RequireActive(); return _native.HiddenInCompactWidth; } }
+
     /// <summary>Whether this view hides the tab bar (<see cref="WithTabBarHidden"/>).</summary>
     public bool TabBarHidden { get { RequireActive(); return _native.HidesTabBar; } }
 

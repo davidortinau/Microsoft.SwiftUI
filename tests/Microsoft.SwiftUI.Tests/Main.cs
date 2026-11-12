@@ -913,6 +913,14 @@ var cases = new (string Name, Action Test)[]
         page.WithTabBarHiddenInCompactWidth(false);
         Assert(!page.TabBarHidden && !page.TabBarHiddenOnlyInCompactWidth);
     }),
+    ("a view can be left out in a compact width", () =>
+    {
+        using var button = Views.Button("Full screen", () => { });
+        Assert(!button.HiddenInCompactWidth);
+        Assert(ReferenceEquals(button.WithHiddenInCompactWidth(), button) && button.HiddenInCompactWidth);
+        button.WithHiddenInCompactWidth(false);
+        Assert(!button.HiddenInCompactWidth);
+    }),
     ("tab view can keep the tab bar form only", () =>
     {
         using var tabs = Views.TabView(Views.Tab("Library", "books.vertical",

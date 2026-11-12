@@ -84,6 +84,9 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var isEnabled = true { willSet { objectWillChange.send() } }
     @objc public var canNavigateBack = true { willSet { objectWillChange.send() } }
     @objc public var hidesTabBar = false { willSet { objectWillChange.send() } }
+    /// Left out in a compact horizontal size class (iPhone, the folded iPhone Duo), for a control
+    /// that only makes sense beside other columns, such as a split view's full-screen button.
+    @objc public var hiddenInCompactWidth = false { willSet { objectWillChange.send() } }
     /// With `hidesTabBar`, hides the tab bar only in a compact horizontal size class (iPhone,
     /// the folded iPhone Duo), so a page shown in a regular-width split view keeps the tabs.
     @objc public var hidesTabBarOnlyInCompactWidth = false { willSet { objectWillChange.send() } }
@@ -2031,9 +2034,22 @@ struct SwiftUINodeView: View {
 
     // A separate property keeps the iOS type checker from failing with
     // "opaque type defined in terms of itself" on one long modifier chain.
+    @ViewBuilder
     var body: some View {
-        decorated.modifier(NodeBehaviorModifier(node: node, scrollTargetsEnabled: scrollTargetsEnabled,
-                                                ownsAccessibilityLabel: ownsAccessibilityLabel))
+        if node.hiddenInCompactWidth && isCompactWidth {
+            EmptyView()
+        } else {
+            decorated.modifier(NodeBehaviorModifier(node: node, scrollTargetsEnabled: scrollTargetsEnabled,
+                                                    ownsAccessibilityLabel: ownsAccessibilityLabel))
+        }
+    }
+
+    private var isCompactWidth: Bool {
+        #if os(iOS)
+        horizontalSizeClass == .compact
+        #else
+        false
+        #endif
     }
 
     private var decorated: some View {
