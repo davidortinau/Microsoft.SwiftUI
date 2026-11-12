@@ -913,6 +913,21 @@ var cases = new (string Name, Action Test)[]
         page.WithTabBarHiddenInCompactWidth(false);
         Assert(!page.TabBarHidden && !page.TabBarHiddenOnlyInCompactWidth);
     }),
+    ("a menu can hold menu-style pickers as submenus, alone or in sections", () =>
+    {
+        var chosen = -1;
+        var type = Views.Picker("Type", ["All Types", "Video", "Podcast"], 1, index => chosen = index)
+            .WithPickerStyle(SwiftPickerStyle.Menu);
+        var sort = Views.Section("Sort", Views.Button("Added", () => { }),
+            Views.Picker("Order", ["Newest first", "Oldest first"], 0).WithPickerStyle(SwiftPickerStyle.Menu));
+        using var menu = Views.Menu(Views.Image("line.3.horizontal.decrease.circle"), sort, type,
+            Views.Divider(), Views.Button("Clear All Filters", () => { }));
+        Assert(menu.Children.Count == 5 && menu.Children[2].Kind == "picker");
+        using var pickersOnly = Views.Menu("Filters", Views.Picker("Language", ["All", "Korean"], 0));
+        Throws<ArgumentException>(() => Views.Menu("Empty", Views.Divider()));
+        Throws<ArgumentException>(() => Views.Menu("Text", Views.Text("Not an item")));
+        Assert(chosen == -1);
+    }),
     ("a view can be left out in a compact width", () =>
     {
         using var button = Views.Button("Full screen", () => { });

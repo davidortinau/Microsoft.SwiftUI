@@ -562,20 +562,22 @@ public static class SwiftUI
     }
 
     /// <summary>
-    /// A menu holds Buttons, Dividers, and titled Sections of Buttons (SwiftUI shows a Section's
-    /// title above its group), with at least one Button.
+    /// A menu holds Buttons, Dividers, Pickers (a menu-style Picker shows as a submenu with a
+    /// checkmark on its choice) and titled Sections of Buttons and Pickers (SwiftUI shows a
+    /// Section's title above its group), with at least one Button or Picker.
     /// </summary>
     private static void ValidateMenuActions(SwiftView[] actions)
     {
+        static bool IsChoice(SwiftView action) => action.Kind is "button" or "picker" or "valuePicker";
         static bool IsItem(SwiftView action) => action.Kind switch
         {
-            "button" or "divider" => true,
-            "section" => action.Children.Count > 0 && action.Children.All(child => child.Kind == "button"),
+            "button" or "divider" or "picker" or "valuePicker" => true,
+            "section" => action.Children.Count > 0 && action.Children.All(IsChoice),
             _ => false,
         };
-        if (!actions.All(IsItem) || !actions.Any(action => action.Kind is "button" or "section"))
+        if (!actions.All(IsItem) || !actions.Any(action => IsChoice(action) || action.Kind == "section"))
             throw new ArgumentException(
-                "A menu needs one or more Button actions (Buttons, Dividers, or Sections of Buttons).",
+                "A menu needs one or more Button or Picker actions (Buttons, Pickers, Dividers, or Sections of them).",
                 nameof(actions));
     }
 
