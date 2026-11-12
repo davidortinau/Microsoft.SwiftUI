@@ -902,6 +902,17 @@ var cases = new (string Name, Action Test)[]
         using var host = SwiftUIHost.CreateView(root);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("a view can hide the tab bar only in a compact width", () =>
+    {
+        using var page = Views.VStack(Views.Text("Editor"));
+        Assert(!page.TabBarHidden && !page.TabBarHiddenOnlyInCompactWidth);
+        page.WithTabBarHidden();
+        Assert(page.TabBarHidden && !page.TabBarHiddenOnlyInCompactWidth);
+        Assert(ReferenceEquals(page.WithTabBarHiddenInCompactWidth(), page));
+        Assert(page.TabBarHidden && page.TabBarHiddenOnlyInCompactWidth);
+        page.WithTabBarHiddenInCompactWidth(false);
+        Assert(!page.TabBarHidden && !page.TabBarHiddenOnlyInCompactWidth);
+    }),
     ("tab view can keep the tab bar form only", () =>
     {
         using var tabs = Views.TabView(Views.Tab("Library", "books.vertical",

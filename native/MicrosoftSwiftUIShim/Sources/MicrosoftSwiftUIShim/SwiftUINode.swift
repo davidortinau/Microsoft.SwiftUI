@@ -84,6 +84,9 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var isEnabled = true { willSet { objectWillChange.send() } }
     @objc public var canNavigateBack = true { willSet { objectWillChange.send() } }
     @objc public var hidesTabBar = false { willSet { objectWillChange.send() } }
+    /// With `hidesTabBar`, hides the tab bar only in a compact horizontal size class (iPhone,
+    /// the folded iPhone Duo), so a page shown in a regular-width split view keeps the tabs.
+    @objc public var hidesTabBarOnlyInCompactWidth = false { willSet { objectWillChange.send() } }
     /// Tab role: "" (none) or "search". A search tab sits apart from the others
     /// (iOS 26: the trailing slot of the tab bar) and keeps its own title and symbol.
     @objc public var tabRole = "" {
@@ -2003,6 +2006,9 @@ struct SwiftUINodeView: View {
     @ObservedObject var node: MSUNode
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @Environment(\.fillsMSUButtonGroupWidth) private var fillsButtonGroupWidth
     @Environment(\.msuScrollTargetsEnabled) private var scrollTargetsEnabled
     @ScaledMetric(relativeTo: .body) private var bodyFontScale: CGFloat = 1
@@ -2225,8 +2231,10 @@ struct SwiftUINodeView: View {
     @ViewBuilder
     private func tabBarVisibility<V: View>(_ view: V) -> some View {
         #if os(iOS)
-        if node.hidesTabBar { view.toolbar(.hidden, for: .tabBar) }
-        else { view }
+        if node.hidesTabBar
+            && (!node.hidesTabBarOnlyInCompactWidth || horizontalSizeClass == .compact) {
+            view.toolbar(.hidden, for: .tabBar)
+        } else { view }
         #else
         view
         #endif

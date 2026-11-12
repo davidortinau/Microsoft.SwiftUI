@@ -698,6 +698,27 @@ public sealed class SwiftView : IDisposable
     }
 
     /// <summary>
+    /// Hides the tab bar while this view shows, but only in a compact horizontal size class
+    /// (iPhone, the folded iPhone Duo): a page in a regular-width split view keeps the tabs.
+    /// </summary>
+    public SwiftView WithTabBarHiddenInCompactWidth(bool hidden = true)
+    {
+        RequireActive();
+        _native.HidesTabBar = hidden;
+        _native.HidesTabBarOnlyInCompactWidth = hidden;
+        return this;
+    }
+
+    /// <summary>Whether this view hides the tab bar (<see cref="WithTabBarHidden"/>).</summary>
+    public bool TabBarHidden { get { RequireActive(); return _native.HidesTabBar; } }
+
+    /// <summary>Whether <see cref="TabBarHidden"/> applies only in a compact width.</summary>
+    public bool TabBarHiddenOnlyInCompactWidth
+    {
+        get { RequireActive(); return _native.HidesTabBarOnlyInCompactWidth; }
+    }
+
+    /// <summary>
     /// Gives a <see cref="SwiftUI.Tab"/> a role. A tab view with a role, a hidden tab or a
     /// style is drawn with the SwiftUI <c>Tab</c> API (iOS 18 / macOS 15); set it before
     /// the tab view is mounted.

@@ -90,6 +90,9 @@ interface MSUNode
     [Export("inspectorMaxWidth")]
     double InspectorMaxWidth { get; set; }
 
+    [Export("hidesTabBarOnlyInCompactWidth")]
+    bool HidesTabBarOnlyInCompactWidth { get; set; }
+
     [Export("splitColumnVisibility")]
     string SplitColumnVisibility { get; set; }
 
