@@ -2009,6 +2009,7 @@ struct SwiftUINodeView: View {
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
+    @Environment(\.msuInSplitColumn) private var inSplitColumn
     @Environment(\.fillsMSUButtonGroupWidth) private var fillsButtonGroupWidth
     @Environment(\.msuScrollTargetsEnabled) private var scrollTargetsEnabled
     @ScaledMetric(relativeTo: .body) private var bodyFontScale: CGFloat = 1
@@ -2232,7 +2233,8 @@ struct SwiftUINodeView: View {
     private func tabBarVisibility<V: View>(_ view: V) -> some View {
         #if os(iOS)
         if node.hidesTabBar
-            && (!node.hidesTabBarOnlyInCompactWidth || horizontalSizeClass == .compact) {
+            && (!(node.hidesTabBarOnlyInCompactWidth || inSplitColumn)
+                || horizontalSizeClass == .compact) {
             view.toolbar(.hidden, for: .tabBar)
         } else { view }
         #else

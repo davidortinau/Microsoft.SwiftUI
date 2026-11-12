@@ -200,9 +200,11 @@ public static class SwiftUI
     /// A three-column SwiftUI <c>NavigationSplitView</c>: <paramref name="sidebar"/>,
     /// <paramref name="content"/> and <paramref name="detail"/> are fixed column slots (replace
     /// what a column shows inside it). In a compact width it collapses to one column at a time.
+    /// A view in a column that hides the tab bar hides it only in a compact width.
     /// <paramref name="onVisibilityChanged"/> runs when the person shows or hides the leading
     /// columns; <paramref name="onCompactColumnChanged"/> when the person goes back in the
-    /// collapsed stack. Neither runs for a change the host makes.
+    /// collapsed stack (only while it is collapsed, so a width change is never reported as a
+    /// Back). Neither runs for a change the host makes.
     /// </summary>
     public static SwiftView NavigationSplitView(SwiftView sidebar, SwiftView content, SwiftView detail,
         Action<SwiftSplitViewVisibility>? onVisibilityChanged = null,

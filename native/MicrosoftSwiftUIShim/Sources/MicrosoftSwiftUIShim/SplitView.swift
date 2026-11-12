@@ -3,10 +3,24 @@ import SwiftUI
 /// A `NavigationSplitView` node: two children (sidebar, detail) or three (sidebar, content,
 /// detail). The node's `splitColumnVisibility` and `splitCompactColumn` are two-way: SwiftUI
 /// writes them when the person shows or hides the sidebar, or goes back in the collapsed
-/// (compact width) stack, and the change is reported to the host. Each column's own node can
+/// (compact width) stack, and the change is reported to the host (a compact column change only
+/// while the split view is collapsed). Each column's own node can
 /// set its width. The columns are fixed slots: a host replaces what a column shows inside it.
 struct SplitViewNodeView: View {
     @ObservedObject var node: MSUNode
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
+
+    /// Only a collapsed split view (compact width) has a stack the person can go back in; a
+    /// write while it is expanded (or while the width class changes) is not a Back.
+    private var isCollapsed: Bool {
+        #if os(iOS)
+        horizontalSizeClass == .compact
+        #else
+        false
+        #endif
+    }
 
     var body: some View {
         switch node.splitViewStyle {
@@ -60,26 +74,43 @@ struct SplitViewNodeView: View {
                 let name = msuSplitColumnName(next)
                 if name == node.splitCompactColumn { return }
                 node.splitCompactColumn = name
-                node.selectionChangedHandler?(msuSplitColumnIndex(name))
+                if isCollapsed {
+                    node.selectionChangedHandler?(msuSplitColumnIndex(name))
+                }
             }
         )
     }
 }
 
-/// One column, with the width its own node sets.
+/// One column, with the width its own node sets. Views inside a column hide the tab bar only in
+/// a compact width: in a regular width the column sits beside the others and the tabs stay.
 private struct SplitColumnView: View {
     @ObservedObject var column: MSUNode
 
     var body: some View {
         if column.splitColumnIdealWidth > 0 {
             SwiftUINodeView(node: column)
+                .environment(\.msuInSplitColumn, true)
                 .navigationSplitViewColumnWidth(
                     min: column.splitColumnMinWidth > 0 ? CGFloat(column.splitColumnMinWidth) : nil,
                     ideal: CGFloat(column.splitColumnIdealWidth),
                     max: column.splitColumnMaxWidth > 0 ? CGFloat(column.splitColumnMaxWidth) : nil)
         } else {
             SwiftUINodeView(node: column)
+                .environment(\.msuInSplitColumn, true)
         }
+    }
+}
+
+private struct MSUInSplitColumnKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// True inside a split view column (see `SplitColumnView`).
+    var msuInSplitColumn: Bool {
+        get { self[MSUInSplitColumnKey.self] }
+        set { self[MSUInSplitColumnKey.self] = newValue }
     }
 }
 
