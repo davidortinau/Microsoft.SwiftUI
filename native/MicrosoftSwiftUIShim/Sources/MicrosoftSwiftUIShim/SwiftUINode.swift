@@ -38,6 +38,39 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var inspectorMinWidth = 0.0 { willSet { objectWillChange.send() } }
     @objc public var inspectorIdealWidth = 0.0 { willSet { objectWillChange.send() } }
     @objc public var inspectorMaxWidth = 0.0 { willSet { objectWillChange.send() } }
+    /// Split view (`NavigationSplitView`) column visibility: "automatic", "all",
+    /// "doubleColumn" or "detailOnly". SwiftUI writes it back when the person shows or hides
+    /// the sidebar; that change is reported through the selected-value handler.
+    @objc public var splitColumnVisibility = "automatic" {
+        willSet {
+            precondition(["automatic", "all", "doubleColumn", "detailOnly"].contains(newValue),
+                         "Unsupported split view column visibility: \(newValue)")
+            objectWillChange.send()
+        }
+    }
+    /// The split view column shown on top when it collapses to one column (compact width):
+    /// "sidebar", "content" or "detail". SwiftUI writes it back when the person goes back;
+    /// that change is reported through the selection handler (0, 1 or 2).
+    @objc public var splitCompactColumn = "sidebar" {
+        willSet {
+            precondition(["sidebar", "content", "detail"].contains(newValue),
+                         "Unsupported split view column: \(newValue)")
+            objectWillChange.send()
+        }
+    }
+    /// Split view style: "" (automatic), "balanced" or "prominentDetail".
+    @objc public var splitViewStyle = "" {
+        willSet {
+            precondition(["", "balanced", "prominentDetail"].contains(newValue),
+                         "Unsupported split view style: \(newValue)")
+            objectWillChange.send()
+        }
+    }
+    /// A split view column's width (`navigationSplitViewColumnWidth(min:ideal:max:)`), set on the
+    /// column's own node; 0 leaves a bound system-defined, and no ideal width sets none.
+    @objc public var splitColumnMinWidth = 0.0 { willSet { objectWillChange.send() } }
+    @objc public var splitColumnIdealWidth = 0.0 { willSet { objectWillChange.send() } }
+    @objc public var splitColumnMaxWidth = 0.0 { willSet { objectWillChange.send() } }
     @objc public var focusRequested = false { willSet { objectWillChange.send() } }
     @objc public var value = 0.0 { willSet { objectWillChange.send() } }
     @objc public var minimum = 0.0 { willSet { objectWillChange.send() } }
@@ -67,10 +100,11 @@ public final class MSUNode: NSObject, ObservableObject {
         }
     }
     @objc public private(set) var hasTabHiddenState = false
-    /// Tab view style: "" (automatic) or "sidebarAdaptable" (a sidebar on iPad and Mac).
+    /// Tab view style: "" (automatic), "sidebarAdaptable" (a sidebar on iPad and Mac) or
+    /// "tabBarOnly" (a tab bar wherever possible, never the sidebar form).
     @objc public var tabViewStyle = "" {
         willSet {
-            precondition(newValue.isEmpty || newValue == "sidebarAdaptable",
+            precondition(["", "sidebarAdaptable", "tabBarOnly"].contains(newValue),
                          "Unsupported tab view style: \(newValue)")
             objectWillChange.send()
         }
@@ -287,7 +321,7 @@ public final class MSUNode: NSObject, ObservableObject {
             "progress", "bottomInset", "circle", "divider", "indeterminateProgress",
             "photo", "zoomPhoto", "photoCover", "quickSuggestions",
             "starterOverlay", "deleteConfirmation", "photoPicker", "youTubePlayer",
-            "overlay"
+            "overlay", "splitView"
         ].contains(kind), "Unsupported SwiftUI node kind: \(kind)")
         self.kind = kind
         super.init()
@@ -2505,6 +2539,10 @@ struct SwiftUINodeView: View {
                         SwiftUINodeView(node: node.children[index]).tag(index)
                     }
                 }
+            }
+        case "splitView":
+            return erased {
+                SplitViewNodeView(node: node)
             }
         case "tab":
             return erased {

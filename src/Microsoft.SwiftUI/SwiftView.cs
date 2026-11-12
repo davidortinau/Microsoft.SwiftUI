@@ -749,7 +749,12 @@ public sealed class SwiftView : IDisposable
         RequireKind("tabView");
         if (!Enum.IsDefined(style))
             throw new ArgumentOutOfRangeException(nameof(style));
-        _native.TabViewStyle = style == SwiftTabViewStyle.SidebarAdaptable ? "sidebarAdaptable" : "";
+        _native.TabViewStyle = style switch
+        {
+            SwiftTabViewStyle.SidebarAdaptable => "sidebarAdaptable",
+            SwiftTabViewStyle.TabBarOnly => "tabBarOnly",
+            _ => "",
+        };
         return this;
     }
 
@@ -793,8 +798,12 @@ public sealed class SwiftView : IDisposable
         get
         {
             RequireKind("tabView");
-            return _native.TabViewStyle == "sidebarAdaptable"
-                ? SwiftTabViewStyle.SidebarAdaptable : SwiftTabViewStyle.Automatic;
+            return _native.TabViewStyle switch
+            {
+                "sidebarAdaptable" => SwiftTabViewStyle.SidebarAdaptable,
+                "tabBarOnly" => SwiftTabViewStyle.TabBarOnly,
+                _ => SwiftTabViewStyle.Automatic,
+            };
         }
     }
 
@@ -1065,6 +1074,114 @@ public sealed class SwiftView : IDisposable
         _native.InspectorIdealWidth = ideal;
         return this;
     }
+
+    /// <summary>
+    /// Which columns a <see cref="SwiftUI.NavigationSplitView(SwiftView, SwiftView, SwiftView, Action{SwiftSplitViewVisibility}?, Action{SwiftSplitViewColumn}?)"/>
+    /// shows in a regular width. Setting it does not report a change; the person showing or
+    /// hiding the sidebar does.
+    /// </summary>
+    public SwiftSplitViewVisibility SplitColumnVisibility
+    {
+        get { RequireKind("splitView"); return ParseSplitVisibility(_native.SplitColumnVisibility); }
+        set
+        {
+            RequireKind("splitView");
+            _native.SplitColumnVisibility = value switch
+            {
+                SwiftSplitViewVisibility.Automatic => "automatic",
+                SwiftSplitViewVisibility.All => "all",
+                SwiftSplitViewVisibility.DoubleColumn => "doubleColumn",
+                SwiftSplitViewVisibility.DetailOnly => "detailOnly",
+                _ => throw new ArgumentOutOfRangeException(nameof(value)),
+            };
+        }
+    }
+
+    /// <summary>
+    /// The split view column shown when it collapses to one column (a compact width). Setting
+    /// it navigates the collapsed stack and does not report a change; the person going back does.
+    /// </summary>
+    public SwiftSplitViewColumn PreferredCompactColumn
+    {
+        get
+        {
+            RequireKind("splitView");
+            return _native.SplitCompactColumn switch
+            {
+                "content" => SwiftSplitViewColumn.Content,
+                "detail" => SwiftSplitViewColumn.Detail,
+                _ => SwiftSplitViewColumn.Sidebar,
+            };
+        }
+        set
+        {
+            RequireKind("splitView");
+            _native.SplitCompactColumn = value switch
+            {
+                SwiftSplitViewColumn.Sidebar => "sidebar",
+                SwiftSplitViewColumn.Content => "content",
+                SwiftSplitViewColumn.Detail => "detail",
+                _ => throw new ArgumentOutOfRangeException(nameof(value)),
+            };
+        }
+    }
+
+    /// <summary>Sets how the split view's columns share the width (default automatic).</summary>
+    public SwiftView WithSplitViewStyle(SwiftSplitViewStyle style)
+    {
+        RequireKind("splitView");
+        _native.SplitViewStyle = style switch
+        {
+            SwiftSplitViewStyle.Automatic => "",
+            SwiftSplitViewStyle.Balanced => "balanced",
+            SwiftSplitViewStyle.ProminentDetail => "prominentDetail",
+            _ => throw new ArgumentOutOfRangeException(nameof(style)),
+        };
+        return this;
+    }
+
+    /// <summary>The style set by <see cref="WithSplitViewStyle"/>.</summary>
+    public SwiftSplitViewStyle SplitViewStyle
+    {
+        get
+        {
+            RequireKind("splitView");
+            return _native.SplitViewStyle switch
+            {
+                "balanced" => SwiftSplitViewStyle.Balanced,
+                "prominentDetail" => SwiftSplitViewStyle.ProminentDetail,
+                _ => SwiftSplitViewStyle.Automatic,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Sets this split view column's width (SwiftUI <c>navigationSplitViewColumnWidth(min:ideal:max:)</c>);
+    /// call it on the column passed to <c>NavigationSplitView</c>. Omitted bounds stay
+    /// system-defined. It has no effect outside a split view.
+    /// </summary>
+    public SwiftView WithSplitColumnWidth(double ideal, double? min = null, double? max = null)
+    {
+        RequireActive();
+        if (!double.IsFinite(ideal) || ideal <= 0)
+            throw new ArgumentOutOfRangeException(nameof(ideal));
+        if (min is { } low && (!double.IsFinite(low) || low <= 0 || low > ideal))
+            throw new ArgumentOutOfRangeException(nameof(min));
+        if (max is { } high && (!double.IsFinite(high) || high < ideal))
+            throw new ArgumentOutOfRangeException(nameof(max));
+        _native.SplitColumnMinWidth = min ?? 0;
+        _native.SplitColumnMaxWidth = max ?? 0;
+        _native.SplitColumnIdealWidth = ideal;
+        return this;
+    }
+
+    internal static SwiftSplitViewVisibility ParseSplitVisibility(string name) => name switch
+    {
+        "all" => SwiftSplitViewVisibility.All,
+        "doubleColumn" => SwiftSplitViewVisibility.DoubleColumn,
+        "detailOnly" => SwiftSplitViewVisibility.DetailOnly,
+        _ => SwiftSplitViewVisibility.Automatic,
+    };
 
     public SwiftView WithPickerStyle(SwiftPickerStyle style)
     {
@@ -1625,7 +1742,9 @@ public sealed class SwiftView : IDisposable
 
     internal void SetSelectedValueChangedHandler(Action<string> handler)
     {
-        RequireKind("valuePicker");
+        RequireActive();
+        if (Kind is not ("valuePicker" or "splitView"))
+            throw new InvalidOperationException($"Expected a value picker or split view node, not {Kind}.");
         if (_nativeHandlersActive)
             _native.SetSelectedValueChangedHandler(handler);
         _selectedValueChangedHandler = handler;

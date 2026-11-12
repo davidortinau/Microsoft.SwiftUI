@@ -76,7 +76,39 @@ public enum SwiftTabViewStyle
 {
     Automatic,
     /// <summary>SwiftUI <c>.sidebarAdaptable</c>: a tab bar on iPhone, a tab bar that becomes a sidebar on iPad and Mac.</summary>
-    SidebarAdaptable
+    SidebarAdaptable,
+    /// <summary>SwiftUI <c>.tabBarOnly</c>: a tab bar wherever possible, never the sidebar form.</summary>
+    TabBarOnly
+}
+
+/// <summary>Which split view columns show (SwiftUI <c>NavigationSplitViewVisibility</c>).</summary>
+public enum SwiftSplitViewVisibility
+{
+    Automatic,
+    /// <summary>Every column.</summary>
+    All,
+    /// <summary>The content and detail columns of three; the sidebar and detail of two.</summary>
+    DoubleColumn,
+    /// <summary>Only the detail column.</summary>
+    DetailOnly
+}
+
+/// <summary>A split view column (SwiftUI <c>NavigationSplitViewColumn</c>).</summary>
+public enum SwiftSplitViewColumn
+{
+    Sidebar,
+    Content,
+    Detail
+}
+
+/// <summary>How split view columns share the width (SwiftUI <c>NavigationSplitViewStyle</c>).</summary>
+public enum SwiftSplitViewStyle
+{
+    Automatic,
+    /// <summary>The detail column narrows to make room for the leading columns.</summary>
+    Balanced,
+    /// <summary>The detail column keeps its size; the leading columns show over it.</summary>
+    ProminentDetail
 }
 
 public enum SwiftColorScheme

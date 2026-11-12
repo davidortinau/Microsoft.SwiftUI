@@ -866,6 +866,51 @@ var cases = new (string Name, Action Test)[]
         using var host = SwiftUIHost.CreateView(root);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("split view holds fixed column slots with guarded visibility, compact column, style and widths", () =>
+    {
+        var visibilityChanges = new List<SwiftSplitViewVisibility>();
+        var columnChanges = new List<SwiftSplitViewColumn>();
+        var sidebar = Views.List(Views.Text("Vocabulary"));
+        var content = Views.VStack(Views.Text("Words")).WithSplitColumnWidth(340, 280, 520);
+        var detail = Views.NavigationStack(Views.Text("Choose a word"));
+        var split = Views.NavigationSplitView(sidebar, content, detail,
+            visibilityChanges.Add, columnChanges.Add);
+        using var root = Views.VStack(split);
+        Assert(split.Kind == "splitView" && split.Children.Count == 3
+            && ReferenceEquals(split.Children[2], detail));
+        Assert(split.SplitColumnVisibility == SwiftSplitViewVisibility.Automatic
+            && split.PreferredCompactColumn == SwiftSplitViewColumn.Sidebar
+            && split.SplitViewStyle == SwiftSplitViewStyle.Automatic);
+        split.SplitColumnVisibility = SwiftSplitViewVisibility.DoubleColumn;
+        split.PreferredCompactColumn = SwiftSplitViewColumn.Detail;
+        Assert(ReferenceEquals(split.WithSplitViewStyle(SwiftSplitViewStyle.ProminentDetail), split));
+        Assert(split.SplitColumnVisibility == SwiftSplitViewVisibility.DoubleColumn
+            && split.PreferredCompactColumn == SwiftSplitViewColumn.Detail
+            && split.SplitViewStyle == SwiftSplitViewStyle.ProminentDetail);
+        // A host's own change reports nothing.
+        Assert(visibilityChanges.Count == 0 && columnChanges.Count == 0);
+        Throws<ArgumentOutOfRangeException>(() => split.SplitColumnVisibility = (SwiftSplitViewVisibility)9);
+        Throws<ArgumentOutOfRangeException>(() => split.PreferredCompactColumn = (SwiftSplitViewColumn)9);
+        Throws<ArgumentOutOfRangeException>(() => split.WithSplitViewStyle((SwiftSplitViewStyle)9));
+        Throws<ArgumentOutOfRangeException>(() => content.WithSplitColumnWidth(0));
+        Throws<ArgumentOutOfRangeException>(() => content.WithSplitColumnWidth(340, min: 400));
+        Throws<ArgumentOutOfRangeException>(() => content.WithSplitColumnWidth(340, max: 300));
+        Throws<InvalidOperationException>(() => root.SplitColumnVisibility = SwiftSplitViewVisibility.All);
+        Throws<InvalidOperationException>(() => root.WithSplitViewStyle(SwiftSplitViewStyle.Balanced));
+        using var twoColumns = Views.NavigationSplitView(Views.Text("Sidebar"), Views.Text("Detail"));
+        Assert(twoColumns.Children.Count == 2);
+        using var host = SwiftUIHost.CreateView(root);
+        SwiftUIHost.DetachView(root, host);
+    }),
+    ("tab view can keep the tab bar form only", () =>
+    {
+        using var tabs = Views.TabView(Views.Tab("Library", "books.vertical",
+            Views.NavigationSplitView(Views.Text("A"), Views.Text("B"), Views.Text("C"))));
+        Assert(ReferenceEquals(tabs.WithTabViewStyle(SwiftTabViewStyle.TabBarOnly), tabs)
+            && tabs.TabViewStyle == SwiftTabViewStyle.TabBarOnly);
+        tabs.WithTabViewStyle(SwiftTabViewStyle.Automatic);
+        Assert(tabs.TabViewStyle == SwiftTabViewStyle.Automatic);
+    }),
     ("speech language is opt-in on Text and Button and rejects malformed tags", () =>
     {
         using var word = Views.Text("학교");

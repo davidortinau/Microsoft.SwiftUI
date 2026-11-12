@@ -196,6 +196,46 @@ public static class SwiftUI
         return stack;
     }
 
+    /// <summary>
+    /// A three-column SwiftUI <c>NavigationSplitView</c>: <paramref name="sidebar"/>,
+    /// <paramref name="content"/> and <paramref name="detail"/> are fixed column slots (replace
+    /// what a column shows inside it). In a compact width it collapses to one column at a time.
+    /// <paramref name="onVisibilityChanged"/> runs when the person shows or hides the leading
+    /// columns; <paramref name="onCompactColumnChanged"/> when the person goes back in the
+    /// collapsed stack. Neither runs for a change the host makes.
+    /// </summary>
+    public static SwiftView NavigationSplitView(SwiftView sidebar, SwiftView content, SwiftView detail,
+        Action<SwiftSplitViewVisibility>? onVisibilityChanged = null,
+        Action<SwiftSplitViewColumn>? onCompactColumnChanged = null) =>
+        SplitView([sidebar, content, detail], onVisibilityChanged, onCompactColumnChanged);
+
+    /// <summary>A two-column SwiftUI <c>NavigationSplitView</c> (sidebar and detail).</summary>
+    public static SwiftView NavigationSplitView(SwiftView sidebar, SwiftView detail,
+        Action<SwiftSplitViewVisibility>? onVisibilityChanged = null,
+        Action<SwiftSplitViewColumn>? onCompactColumnChanged = null) =>
+        SplitView([sidebar, detail], onVisibilityChanged, onCompactColumnChanged);
+
+    private static SwiftView SplitView(SwiftView[] columns,
+        Action<SwiftSplitViewVisibility>? onVisibilityChanged,
+        Action<SwiftSplitViewColumn>? onCompactColumnChanged)
+    {
+        SwiftView.ValidateChildren(columns);
+        var node = new SwiftView("splitView");
+        foreach (var column in columns)
+            node.Attach(column);
+        if (onVisibilityChanged is not null)
+            node.SetSelectedValueChangedHandler(name =>
+                onVisibilityChanged(SwiftView.ParseSplitVisibility(name)));
+        if (onCompactColumnChanged is not null)
+            node.SetSelectionChangedHandler(index => onCompactColumnChanged(index switch
+            {
+                1 => SwiftSplitViewColumn.Content,
+                2 => SwiftSplitViewColumn.Detail,
+                _ => SwiftSplitViewColumn.Sidebar,
+            }));
+        return node;
+    }
+
     public static SwiftView Tab(string title, string systemImage, SwiftView content)
     {
         SwiftView.ValidateChildren([content]);

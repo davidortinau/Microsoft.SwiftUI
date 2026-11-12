@@ -25,6 +25,8 @@ struct AdaptiveTabViewNodeView: View {
         let styled = Group {
             if node.tabViewStyle == "sidebarAdaptable" {
                 tabs.tabViewStyle(.sidebarAdaptable)
+            } else if node.tabViewStyle == "tabBarOnly" {
+                tabs.tabViewStyle(.tabBarOnly)
             } else {
                 tabs
             }

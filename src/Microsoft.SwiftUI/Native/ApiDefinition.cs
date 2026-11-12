@@ -90,6 +90,24 @@ interface MSUNode
     [Export("inspectorMaxWidth")]
     double InspectorMaxWidth { get; set; }
 
+    [Export("splitColumnVisibility")]
+    string SplitColumnVisibility { get; set; }
+
+    [Export("splitCompactColumn")]
+    string SplitCompactColumn { get; set; }
+
+    [Export("splitViewStyle")]
+    string SplitViewStyle { get; set; }
+
+    [Export("splitColumnMinWidth")]
+    double SplitColumnMinWidth { get; set; }
+
+    [Export("splitColumnIdealWidth")]
+    double SplitColumnIdealWidth { get; set; }
+
+    [Export("splitColumnMaxWidth")]
+    double SplitColumnMaxWidth { get; set; }
+
     [Export("focusRequested")]
     bool FocusRequested { get; set; }
 
