@@ -299,12 +299,9 @@ public sealed class SwiftView : IDisposable
     }
 
     /// <summary>
-    /// The SF Symbol an <see cref="SwiftUI.Image"/> shows. Settable in place, so a toolbar button
-    /// can change its symbol (a filled filter icon once a filter is on) without being rebuilt.
-    /// </summary>
-    /// <summary>
-    /// The SF Symbol of an Image, or of a Label (its title is <see cref="Text"/>), changed in
-    /// place: a toolbar's buttons cannot be replaced, only updated.
+    /// The SF Symbol an <see cref="SwiftUI.Image"/> or a <see cref="SwiftUI.Label"/> shows (a
+    /// Label's title is <see cref="Text"/>). Settable in place, so a toolbar button can change
+    /// its symbol (a filled filter icon once a filter is on) without being rebuilt.
     /// </summary>
     public string SystemImageName
     {
