@@ -2833,8 +2833,20 @@ struct SwiftUINodeView: View {
                 if let root = node.children.first {
                     SwiftUINodeView(node: root)
                         .toolbar {
+                            // A Cancel-role Button takes the system's cancellation place (a
+                            // sheet's leading edge), as SwiftUI's own Cancel does.
+                            if let cancel = node.children.dropFirst().first(where: {
+                                $0.kind == "button" && $0.buttonRole == "cancel"
+                            }) {
+                                ToolbarItem(placement: .cancellationAction) {
+                                    SwiftUINodeView(node: cancel)
+                                        .accessibilityShowsLargeContentViewer()
+                                }
+                            }
                             ToolbarItemGroup(placement: .automatic) {
-                                ForEach(node.children.dropFirst(), id: \.id) { item in
+                                ForEach(node.children.dropFirst().filter {
+                                    !($0.kind == "button" && $0.buttonRole == "cancel")
+                                }, id: \.id) { item in
                                     // A toolbar item is drawn as a hosted view, so it does not get
                                     // the bar's own large content viewer; long press shows its
                                     // title and symbol (as a tab does) while the viewer is on.
@@ -3095,6 +3107,8 @@ private struct SearchableNodeView: View {
                 .searchable(text: text, tokens: tokens, prompt: Text(node.placeholder)) { token in
                     Text(token.title)
                 }
+                // Return (Search) in the field: the node's submit action, as a text field's.
+                .onSubmit(of: .search) { node.submitTextField() }
                 .modifier(SearchFocus(focused: $focused))
                 .modifier(SearchBottomBar(enabled: node.searchPlacement == "bottomBar"))
                 .modifier(SearchKeepsToolbar(enabled: node.searchKeepsToolbar))

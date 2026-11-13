@@ -1542,6 +1542,19 @@ var cases = new (string Name, Action Test)[]
         Assert(labeled.Kind == "labeledContent" && labeled.Text == "Title"
             && labeled.Children.Count == 1 && ReferenceEquals(labeled.Children[0], titleField));
         Throws<ArgumentNullException>(() => Views.LabeledContent(null!, Views.Text("Value")));
+        // A Searchable takes a submit action (Return in its field); other kinds still refuse.
+        using var submitSearch = Views.Searchable(Views.List(Views.Text("Row")), "Find");
+        submitSearch.OnSubmit(() => called++);
+        Throws<InvalidOperationException>(() => Views.Text("No").OnSubmit(() => { }));
+        // Insert: a row placed before the last one, in order; out-of-range indexes throw.
+        var first = Views.Text("A");
+        var last = Views.Text("Load More");
+        using var insertList = Views.List(first, last);
+        var middle = Views.Text("B");
+        insertList.Insert(1, middle);
+        Assert(insertList.Children.Count == 3 && ReferenceEquals(insertList.Children[1], middle)
+            && ReferenceEquals(insertList.Children[2], last));
+        Throws<ArgumentOutOfRangeException>(() => insertList.Insert(9, Views.Text("C")));
         // Search tokens: shown in the field in order, replaced in place, validated; focus works
         // as on a text field.
         var tokenSearch = Views.Searchable(Views.List(Views.Text("Words")), "Search", "pizza",

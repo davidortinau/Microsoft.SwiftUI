@@ -344,9 +344,15 @@ public sealed class SwiftView : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Runs <paramref name="handler"/> when Return is pressed in this TextField, or Search in
+    /// this Searchable's field.
+    /// </summary>
     public SwiftView OnSubmit(Action handler)
     {
-        RequireKind("textField");
+        RequireActive();
+        if (Kind is not ("textField" or "searchable"))
+            throw new InvalidOperationException($"Expected a textField or searchable node, not {Kind}.");
         ArgumentNullException.ThrowIfNull(handler);
         if (_nativeHandlersActive)
             _native.SetSubmitHandler(handler);
@@ -1780,6 +1786,23 @@ public sealed class SwiftView : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Inserts <paramref name="child"/> at <paramref name="index"/> (0 to Children.Count), so a
+    /// list can take a row before its last one (a Load More) in place.
+    /// </summary>
+    public SwiftView Insert(int index, SwiftView child)
+    {
+        RequireContainer();
+        if (Kind is "tabView" or "horizontalGrid")
+            throw new InvalidOperationException($"Use Add for a {Kind}.");
+        if (_parent?.Kind == "horizontalGrid")
+            throw new InvalidOperationException("Detach a grid row before changing its cells.");
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(index, _children.Count);
+        Attach(child, index);
+        return this;
+    }
+
     public void RemoveAt(int index)
     {
         RequireContainer();
@@ -1810,7 +1833,9 @@ public sealed class SwiftView : IDisposable
         _children.Clear();
     }
 
-    internal void Attach(SwiftView child)
+    internal void Attach(SwiftView child) => Attach(child, _children.Count);
+
+    private void Attach(SwiftView child, int index)
     {
         RequireActive();
         ArgumentNullException.ThrowIfNull(child);
@@ -1824,8 +1849,8 @@ public sealed class SwiftView : IDisposable
         }
         if (!_nativeHandlersActive)
             child.SuspendNativeHandlers();
-        _native.InsertChild(child._native, _children.Count);
-        _children.Add(child);
+        _native.InsertChild(child._native, index);
+        _children.Insert(index, child);
         child._parent = this;
         if (_nativeHandlersActive)
             child.RestoreNativeHandlers();
