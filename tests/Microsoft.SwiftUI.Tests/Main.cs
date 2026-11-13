@@ -1518,6 +1518,23 @@ var cases = new (string Name, Action Test)[]
     {
         var called = 0;
         var list = Views.Searchable(Views.List(Views.Text("Result")), "Find", onChanged: _ => { });
+        // Search tokens: shown in the field in order, replaced in place, validated; focus works
+        // as on a text field.
+        var tokenSearch = Views.Searchable(Views.List(Views.Text("Words")), "Search", "pizza",
+            _ => { }, [new SwiftSearchToken("language", "Korean")], _ => { });
+        Assert(tokenSearch.SearchTokens.Single() == new SwiftSearchToken("language", "Korean"));
+        tokenSearch.SearchTokens = [new SwiftSearchToken("type", "Video"),
+            new SwiftSearchToken("language", "Korean")];
+        Assert(tokenSearch.SearchTokens.Select(token => token.Id).SequenceEqual(["type", "language"]));
+        tokenSearch.SearchTokens = [];
+        Assert(tokenSearch.SearchTokens.Count == 0);
+        Throws<ArgumentException>(() => tokenSearch.SearchTokens =
+            [new SwiftSearchToken("a", "A"), new SwiftSearchToken("a", "B")]);
+        Throws<ArgumentException>(() => tokenSearch.SearchTokens = [new SwiftSearchToken("", "A")]);
+        Throws<InvalidOperationException>(() => list.Children[0].SearchTokens = []);
+        tokenSearch.FocusRequested = true;
+        Assert(tokenSearch.FocusRequested);
+        tokenSearch.Dispose();
         var grid = Views.LazyVGrid(2, Views.Text("One"), Views.Text("Two"));
         var menu = Views.Menu("More", Views.Button("Action", () => called++));
         var toolbar = Views.Toolbar(Views.VStack(list, grid), menu);

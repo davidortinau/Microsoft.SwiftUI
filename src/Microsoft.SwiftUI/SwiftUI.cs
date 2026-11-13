@@ -536,6 +536,25 @@ public static class SwiftUI
         return node;
     }
 
+    /// <summary>
+    /// The system search field over <paramref name="content"/> with <paramref name="tokens"/>
+    /// shown inside the field (SwiftUI <c>searchable(text:tokens:)</c>). Deleting a token in
+    /// the field calls <paramref name="onTokensChanged"/> with the remaining ids.
+    /// </summary>
+    public static SwiftView Searchable(SwiftView content, string placeholder, string text,
+                                      Action<string>? onChanged,
+                                      IReadOnlyList<SwiftSearchToken> tokens,
+                                      Action<IReadOnlyList<string>>? onTokensChanged)
+    {
+        ArgumentNullException.ThrowIfNull(tokens);
+        var node = Searchable(content, placeholder, text, onChanged);
+        node.SearchTokens = tokens;
+        if (onTokensChanged is not null)
+            node.SetSelectedValueChangedHandler(ids => onTokensChanged(
+                ids.Length == 0 ? [] : ids.Split('\u001F')));
+        return node;
+    }
+
     public static SwiftView Menu(string title, params SwiftView[] actions)
     {
         SwiftView.ValidateChildren(actions);

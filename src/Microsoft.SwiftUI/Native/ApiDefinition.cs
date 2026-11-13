@@ -25,6 +25,12 @@ interface MSUNode
     [Export("placeholder")]
     string Placeholder { get; set; }
 
+    [Export("searchTokenIds", ArgumentSemantic.Copy)]
+    string[] SearchTokenIds { get; set; }
+
+    [Export("searchTokenTitles", ArgumentSemantic.Copy)]
+    string[] SearchTokenTitles { get; set; }
+
     [Export("hidesTextEditorScrollBackground")]
     bool HidesTextEditorScrollBackground { get; set; }
 

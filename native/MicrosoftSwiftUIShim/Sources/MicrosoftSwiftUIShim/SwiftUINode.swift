@@ -75,6 +75,11 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var splitColumnIdealWidth = 0.0 { willSet { objectWillChange.send() } }
     @objc public var splitColumnMaxWidth = 0.0 { willSet { objectWillChange.send() } }
     @objc public var focusRequested = false { willSet { objectWillChange.send() } }
+    /// A searchable's tokens (`searchable(text:tokens:)`): ids and the titles shown in the
+    /// field, in order. Deleting a token in the field reports the remaining ids through
+    /// `selectedValueChangedHandler`, joined by U+001F.
+    @objc public var searchTokenIds: [String] = [] { willSet { objectWillChange.send() } }
+    @objc public var searchTokenTitles: [String] = [] { willSet { objectWillChange.send() } }
     @objc public var value = 0.0 { willSet { objectWillChange.send() } }
     @objc public var minimum = 0.0 { willSet { objectWillChange.send() } }
     @objc public var maximum = 1.0 { willSet { objectWillChange.send() } }
@@ -2733,16 +2738,7 @@ struct SwiftUINodeView: View {
             }
         case "searchable":
             return erased {
-                if let root = node.children.first {
-                    SwiftUINodeView(node: root)
-                        .searchable(text: Binding(
-                            get: { node.text },
-                            set: { next in
-                                node.text = next
-                                node.textChangedHandler?(next)
-                            }
-                        ), prompt: node.placeholder)
-                }
+                SearchableNodeView(node: node)
             }
         case "menu":
             return erased {
@@ -2967,6 +2963,75 @@ struct FixedWidthFrame: ViewModifier {
     func body(content: Content) -> some View {
         if width > 0 {
             content.frame(width: CGFloat(width), alignment: alignment)
+        } else {
+            content
+        }
+    }
+}
+
+
+/// One search token (`searchable(text:tokens:)`).
+struct MSUSearchToken: Identifiable, Hashable {
+    let id: String
+    let title: String
+}
+
+/// The system search field over its content, with the node's tokens shown inside the field
+/// (deleting one reports the rest) and focus following `focusRequested`, as a text field's does.
+private struct SearchableNodeView: View {
+    @ObservedObject var node: MSUNode
+    @FocusState private var focused: Bool
+
+    private var text: Binding<String> {
+        Binding(
+            get: { node.text },
+            set: { next in
+                node.text = next
+                node.textChangedHandler?(next)
+            }
+        )
+    }
+
+    private var tokens: Binding<[MSUSearchToken]> {
+        Binding(
+            get: {
+                zip(node.searchTokenIds, node.searchTokenTitles).map {
+                    MSUSearchToken(id: $0.0, title: $0.1)
+                }
+            },
+            set: { next in
+                let ids = next.map(\.id)
+                if ids == node.searchTokenIds { return }
+                node.searchTokenIds = ids
+                node.searchTokenTitles = next.map(\.title)
+                node.selectedValueChangedHandler?(ids.joined(separator: "\u{1F}"))
+            }
+        )
+    }
+
+    var body: some View {
+        if let root = node.children.first {
+            SwiftUINodeView(node: root)
+                .searchable(text: text, tokens: tokens, prompt: Text(node.placeholder)) { token in
+                    Text(token.title)
+                }
+                .modifier(SearchFocus(focused: $focused))
+                .onChange(of: node.focusRequested, initial: true) { _, next in focused = next }
+                .onChange(of: focused) { _, next in
+                    if node.focusRequested != next { node.focusRequested = next }
+                    node.focusChangedHandler?(next)
+                }
+        }
+    }
+}
+
+/// `searchFocused` where the system has it (iOS 18, macOS 15).
+private struct SearchFocus: ViewModifier {
+    var focused: FocusState<Bool>.Binding
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, macOS 15.0, *) {
+            content.searchFocused(focused)
         } else {
             content
         }

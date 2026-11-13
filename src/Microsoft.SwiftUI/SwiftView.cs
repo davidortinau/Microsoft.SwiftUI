@@ -169,6 +169,38 @@ public sealed class SwiftView : IDisposable
         set { RequireInput(); _native.FocusRequested = value; }
     }
 
+    /// <summary>
+    /// A searchable's tokens, shown inside its field in order; a token needs a non-empty id
+    /// (unique) and title.
+    /// </summary>
+    public IReadOnlyList<SwiftSearchToken> SearchTokens
+    {
+        get
+        {
+            RequireKind("searchable");
+            var ids = _native.SearchTokenIds ?? [];
+            var titles = _native.SearchTokenTitles ?? [];
+            return ids.Zip(titles, (id, title) => new SwiftSearchToken(id, title)).ToArray();
+        }
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            RequireKind("searchable");
+            RequireActive();
+            if (value.Any(token => token is null || string.IsNullOrEmpty(token.Id)
+                    || string.IsNullOrEmpty(token.Title))
+                || value.Select(token => token.Id).Distinct(StringComparer.Ordinal).Count() != value.Count)
+                throw new ArgumentException("Search tokens need unique ids and titles.", nameof(value));
+            var ids = value.Select(token => token.Id).ToArray();
+            var titles = value.Select(token => token.Title).ToArray();
+            if ((_native.SearchTokenIds ?? []).SequenceEqual(ids)
+                && (_native.SearchTokenTitles ?? []).SequenceEqual(titles))
+                return;
+            _native.SearchTokenTitles = titles;
+            _native.SearchTokenIds = ids;
+        }
+    }
+
     public double Value
     {
         get { RequireValue(); return _native.Value; }
@@ -2051,7 +2083,7 @@ public sealed class SwiftView : IDisposable
     private void RequireInput()
     {
         RequireActive();
-        if (Kind is not ("textField" or "textEditor" or "secureField"))
+        if (Kind is not ("textField" or "textEditor" or "secureField" or "searchable"))
             throw new InvalidOperationException($"Expected a text input node, not {Kind}.");
     }
 

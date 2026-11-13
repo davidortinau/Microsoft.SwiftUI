@@ -158,6 +158,9 @@ public enum SwiftPhotoLoadState
 
 public sealed record SwiftPickerOption(string Value, string Title);
 
+/// <summary>A search token shown inside a searchable's field (SwiftUI <c>searchable(text:tokens:)</c>).</summary>
+public sealed record SwiftSearchToken(string Id, string Title);
+
 public sealed record SwiftImportedFile(byte[] Data, string Name, string MimeType);
 
 /// <summary>The edge an <see cref="SwiftUI.Overlay"/> layer is aligned to.</summary>
