@@ -248,6 +248,38 @@ public static class SwiftUI
         return tab;
     }
 
+    /// <summary>A title with a symbol (SwiftUI <c>Label</c>), e.g. a swipe action's content.</summary>
+    public static SwiftView Label(string title, string systemImage)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(systemImage);
+        var label = Create("label", title);
+        label.Native.ImageName = systemImage;
+        return label;
+    }
+
+    /// <summary>
+    /// A list row with swipe actions (SwiftUI <c>swipeActions(edge:)</c>): Buttons revealed by
+    /// swiping left (<paramref name="trailing"/>, never on a full swipe) or right
+    /// (<paramref name="leading"/>, the first runs on a full swipe). Use inside a List.
+    /// </summary>
+    public static SwiftView SwipeRow(SwiftView content, IReadOnlyList<SwiftView> trailing,
+        IReadOnlyList<SwiftView>? leading = null)
+    {
+        ArgumentNullException.ThrowIfNull(trailing);
+        leading ??= [];
+        SwiftView.ValidateChildren([content, .. trailing, .. leading]);
+        if (trailing.Concat(leading).Any(action => action.Kind != "button"))
+            throw new ArgumentException("Swipe actions must be Buttons.");
+        var row = new SwiftView("swipeRow");
+        row.Attach(content);
+        foreach (var action in trailing)
+            row.Attach(action);
+        foreach (var action in leading)
+            row.Attach(action);
+        row.Native.SwipeLeadingCount = leading.Count;
+        return row;
+    }
+
     public static SwiftView TabView(params SwiftView[] tabs) =>
         TabView(0, null, tabs);
 

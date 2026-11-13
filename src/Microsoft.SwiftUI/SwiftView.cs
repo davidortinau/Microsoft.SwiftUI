@@ -1003,6 +1003,35 @@ public sealed class SwiftView : IDisposable
         return this;
     }
 
+    /// <summary>Sets the button's role (SwiftUI <c>Button(role:)</c>); default none.</summary>
+    public SwiftView WithButtonRole(SwiftButtonRole role)
+    {
+        RequireKind("button");
+        _native.ButtonRole = role switch
+        {
+            SwiftButtonRole.None => "",
+            SwiftButtonRole.Destructive => "destructive",
+            SwiftButtonRole.Cancel => "cancel",
+            _ => throw new ArgumentOutOfRangeException(nameof(role)),
+        };
+        return this;
+    }
+
+    /// <summary>The role set by <see cref="WithButtonRole"/>.</summary>
+    public SwiftButtonRole ButtonRole
+    {
+        get
+        {
+            RequireKind("button");
+            return _native.ButtonRole switch
+            {
+                "destructive" => SwiftButtonRole.Destructive,
+                "cancel" => SwiftButtonRole.Cancel,
+                _ => SwiftButtonRole.None,
+            };
+        }
+    }
+
     public SwiftView WithButtonAppearance(string? lightFillHex, string? darkFillHex,
         string? lightBorderHex, string? darkBorderHex, double cornerRadius,
         double disabledOpacity = 0.65)

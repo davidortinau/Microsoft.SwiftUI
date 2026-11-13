@@ -1518,6 +1518,18 @@ var cases = new (string Name, Action Test)[]
     {
         var called = 0;
         var list = Views.Searchable(Views.List(Views.Text("Result")), "Find", onChanged: _ => { });
+        // Swipe rows: the row, trailing then leading Buttons; roles and labels.
+        var delete = Views.Button(Views.Label("Delete", "trash"), () => called++)
+            .WithButtonRole(SwiftButtonRole.Destructive);
+        var study = Views.Button(Views.Label("Study", "graduationcap"), () => called++);
+        using var swipeList = Views.List(Views.SwipeRow(Views.Text("Row"), [delete], [study]));
+        var swipe = swipeList.Children[0];
+        Assert(swipe.Kind == "swipeRow" && swipe.Children.Count == 3
+            && ReferenceEquals(swipe.Children[1], delete) && ReferenceEquals(swipe.Children[2], study));
+        Assert(delete.ButtonRole == SwiftButtonRole.Destructive && study.ButtonRole == SwiftButtonRole.None);
+        Assert(delete.Children[0].Kind == "label" && delete.Children[0].Text == "Delete");
+        Throws<ArgumentException>(() => Views.SwipeRow(Views.Text("Row"), [Views.Text("Not a button")]));
+        Throws<ArgumentOutOfRangeException>(() => study.WithButtonRole((SwiftButtonRole)9));
         // Search tokens: shown in the field in order, replaced in place, validated; focus works
         // as on a text field.
         var tokenSearch = Views.Searchable(Views.List(Views.Text("Words")), "Search", "pizza",

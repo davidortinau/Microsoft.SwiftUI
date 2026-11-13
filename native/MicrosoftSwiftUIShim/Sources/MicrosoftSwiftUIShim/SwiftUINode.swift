@@ -148,6 +148,17 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var lineHeightMultiple = 0.0 { willSet { objectWillChange.send() } }
     @objc public var preferredScheme = "" { willSet { objectWillChange.send() } }
     @objc public var buttonStyle = "" { willSet { objectWillChange.send() } }
+    /// A button's role: "" (none), "destructive" or "cancel" (`Button(role:)`).
+    @objc public var buttonRole = "" {
+        willSet {
+            precondition(["", "destructive", "cancel"].contains(newValue),
+                         "Unsupported button role: \(newValue)")
+            objectWillChange.send()
+        }
+    }
+    /// A swipe row's leading actions: its last `swipeLeadingCount` children (after the content
+    /// and the trailing actions).
+    @objc public var swipeLeadingCount = 0 { willSet { objectWillChange.send() } }
     @objc public var hasButtonAppearance = false { willSet { objectWillChange.send() } }
     @objc public var buttonFillHex = "" { willSet { objectWillChange.send() } }
     @objc public var buttonFillDarkHex = "" { willSet { objectWillChange.send() } }
@@ -335,7 +346,7 @@ public final class MSUNode: NSObject, ObservableObject {
             "progress", "bottomInset", "circle", "divider", "indeterminateProgress",
             "photo", "zoomPhoto", "photoCover", "quickSuggestions",
             "starterOverlay", "deleteConfirmation", "photoPicker", "youTubePlayer",
-            "overlay", "splitView"
+            "overlay", "splitView", "swipeRow", "label"
         ].contains(kind), "Unsupported SwiftUI node kind: \(kind)")
         self.kind = kind
         super.init()
@@ -2309,7 +2320,9 @@ struct SwiftUINodeView: View {
     @ViewBuilder
     private var styledButton: some View {
         let ellipse = ellipticalButtonShape
-        let button = Button(action: { node.invokeAction() }) {
+        let role: ButtonRole? = node.buttonRole == "destructive" ? .destructive
+            : node.buttonRole == "cancel" ? .cancel : nil
+        let button = Button(role: role, action: { node.invokeAction() }) {
             if let label = node.children.first {
                 buttonLabel(SwiftUINodeView(node: label), ellipticalShape: ellipse)
                     .accessibilityElement(children: .combine)
@@ -2740,6 +2753,14 @@ struct SwiftUINodeView: View {
             return erased {
                 SearchableNodeView(node: node)
             }
+        case "swipeRow":
+            return erased {
+                SwipeRowNodeView(node: node)
+            }
+        case "label":
+            return erased {
+                Label(node.text, systemImage: node.imageName)
+            }
         case "menu":
             return erased {
                 if let label = node.children.first, label.kind != "button" {
@@ -3034,6 +3055,29 @@ private struct SearchFocus: ViewModifier {
             content.searchFocused(focused)
         } else {
             content
+        }
+    }
+}
+
+/// A list row with swipe actions: its first child is the row, then the trailing actions, then
+/// `swipeLeadingCount` leading actions (`swipeActions(edge:)`). Trailing actions need a full
+/// swipe to be deliberate; a leading action runs on a full swipe.
+private struct SwipeRowNodeView: View {
+    @ObservedObject var node: MSUNode
+
+    var body: some View {
+        if let content = node.children.first {
+            let actions = Array(node.children.dropFirst())
+            let leading = min(max(node.swipeLeadingCount, 0), actions.count)
+            let trailing = Array(actions.dropLast(leading))
+            let leadingActions = Array(actions.suffix(leading))
+            SwiftUINodeView(node: content)
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    ForEach(trailing, id: \.id) { SwiftUINodeView(node: $0) }
+                }
+                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                    ForEach(leadingActions, id: \.id) { SwiftUINodeView(node: $0) }
+                }
         }
     }
 }

@@ -201,6 +201,12 @@ interface MSUNode
     [Export("buttonStyle")]
     string ButtonStyle { get; set; }
 
+    [Export("buttonRole")]
+    string ButtonRole { get; set; }
+
+    [Export("swipeLeadingCount")]
+    nint SwipeLeadingCount { get; set; }
+
     [Export("hasButtonAppearance")]
     bool HasButtonAppearance { get; set; }
 
