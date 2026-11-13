@@ -38,7 +38,7 @@ struct SplitViewNodeView: View {
         let columns = node.children
         if columns.count >= 3 {
             NavigationSplitView(columnVisibility: visibility, preferredCompactColumn: compactColumn) {
-                SplitColumnView(column: columns[0])
+                sidebar(columns[0])
             } content: {
                 SplitColumnView(column: columns[1])
             } detail: {
@@ -46,11 +46,17 @@ struct SplitViewNodeView: View {
             }
         } else if columns.count == 2 {
             NavigationSplitView(columnVisibility: visibility, preferredCompactColumn: compactColumn) {
-                SplitColumnView(column: columns[0])
+                sidebar(columns[0])
             } detail: {
                 SplitColumnView(column: columns[1])
             }
         }
+    }
+
+    /// The sidebar column, without the sidebar toggle while the node hides it.
+    private func sidebar(_ column: MSUNode) -> some View {
+        SplitColumnView(column: column)
+            .toolbar(removing: node.splitSidebarToggleHidden ? .sidebarToggle : nil)
     }
 
     private var visibility: Binding<NavigationSplitViewVisibility> {

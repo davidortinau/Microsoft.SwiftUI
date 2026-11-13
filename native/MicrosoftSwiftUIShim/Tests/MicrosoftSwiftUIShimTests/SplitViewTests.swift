@@ -54,6 +54,18 @@ final class SplitViewTests: XCTestCase {
     }
 
     @MainActor
+    func testTheSidebarToggleCanBeLeftOut() {
+        for columns in [2, 3] {
+            let node = split(columns: columns)
+            XCTAssertFalse(node.splitSidebarToggleHidden)
+            node.splitSidebarToggleHidden = true
+            _ = SplitViewNodeView(node: node).body
+            node.splitSidebarToggleHidden = false
+            _ = SplitViewNodeView(node: node).body
+        }
+    }
+
+    @MainActor
     func testAViewCanBeLeftOutInACompactWidth() {
         let button = MSUBridge.makeNode(kind: "button")
         XCTAssertFalse(button.hiddenInCompactWidth)

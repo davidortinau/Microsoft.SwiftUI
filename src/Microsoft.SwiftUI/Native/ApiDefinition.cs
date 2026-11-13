@@ -105,6 +105,9 @@ interface MSUNode
     [Export("splitViewStyle")]
     string SplitViewStyle { get; set; }
 
+    [Export("splitSidebarToggleHidden")]
+    bool SplitSidebarToggleHidden { get; set; }
+
     [Export("splitColumnMinWidth")]
     double SplitColumnMinWidth { get; set; }
 

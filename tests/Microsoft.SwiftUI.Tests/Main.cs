@@ -887,6 +887,13 @@ var cases = new (string Name, Action Test)[]
         Assert(split.SplitColumnVisibility == SwiftSplitViewVisibility.DoubleColumn
             && split.PreferredCompactColumn == SwiftSplitViewColumn.Detail
             && split.SplitViewStyle == SwiftSplitViewStyle.ProminentDetail);
+        // The sidebar toggle shows by default; a host can leave it out and bring it back.
+        Assert(!split.SidebarToggleHidden);
+        split.SidebarToggleHidden = true;
+        Assert(split.SidebarToggleHidden);
+        split.SidebarToggleHidden = false;
+        Assert(!split.SidebarToggleHidden);
+        Throws<InvalidOperationException>(() => root.SidebarToggleHidden = true);
         // A host's own change reports nothing.
         Assert(visibilityChanges.Count == 0 && columnChanges.Count == 0);
         Throws<ArgumentOutOfRangeException>(() => split.SplitColumnVisibility = (SwiftSplitViewVisibility)9);

@@ -66,6 +66,9 @@ public final class MSUNode: NSObject, ObservableObject {
             objectWillChange.send()
         }
     }
+    /// A split view without its sidebar toggle (`toolbar(removing: .sidebarToggle)` on the
+    /// sidebar column), for a host that shows the sidebar's contents elsewhere.
+    @objc public var splitSidebarToggleHidden = false { willSet { objectWillChange.send() } }
     /// A split view column's width (`navigationSplitViewColumnWidth(min:ideal:max:)`), set on the
     /// column's own node; 0 leaves a bound system-defined, and no ideal width sets none.
     @objc public var splitColumnMinWidth = 0.0 { willSet { objectWillChange.send() } }

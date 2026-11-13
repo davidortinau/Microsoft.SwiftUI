@@ -1192,6 +1192,27 @@ public sealed class SwiftView : IDisposable
     }
 
     /// <summary>
+    /// Whether the split view leaves out its sidebar toggle (SwiftUI
+    /// <c>toolbar(removing: .sidebarToggle)</c> on the sidebar column); default false, so the
+    /// toggle shows. For a host that shows the sidebar's contents in another column.
+    /// </summary>
+    public bool SidebarToggleHidden
+    {
+        get
+        {
+            RequireKind("splitView");
+            return _native.SplitSidebarToggleHidden;
+        }
+        set
+        {
+            RequireKind("splitView");
+            RequireActive();
+            if (_native.SplitSidebarToggleHidden != value)
+                _native.SplitSidebarToggleHidden = value;
+        }
+    }
+
+    /// <summary>
     /// Sets this split view column's width (SwiftUI <c>navigationSplitViewColumnWidth(min:ideal:max:)</c>);
     /// call it on the column passed to <c>NavigationSplitView</c>. Omitted bounds stay
     /// system-defined. It has no effect outside a split view.
