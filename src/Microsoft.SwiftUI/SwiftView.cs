@@ -1714,6 +1714,28 @@ public sealed class SwiftView : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// Inside a Form or List, this row draws no row background (SwiftUI
+    /// <c>listRowBackground(Color.clear)</c>), so a header such as an app mark sits on the page
+    /// above the grouped rows. No effect outside a Form or List. Off by default.
+    /// </summary>
+    public SwiftView WithListRowBackgroundHidden(bool hidden = true)
+    {
+        RequireActive();
+        _native.ListRowBackgroundHidden = hidden;
+        return this;
+    }
+
+    /// <summary>Whether <see cref="WithListRowBackgroundHidden"/> clears this row's background.</summary>
+    public bool ListRowBackgroundHidden
+    {
+        get
+        {
+            RequireActive();
+            return _native.ListRowBackgroundHidden;
+        }
+    }
+
     /// <summary>Whether <see cref="WithLabelsHidden"/> hides this Toggle's label.</summary>
     public bool LabelsHidden
     {

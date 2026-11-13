@@ -1182,6 +1182,21 @@ var cases = new (string Name, Action Test)[]
         Assert(host is NSView);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("a Form row's background can be hidden, opt-in", () =>
+    {
+        // The Form owns the header once it is a row, so only the Form is disposed.
+        var header = Views.Text("SentenceStudio");
+        Assert(!header.ListRowBackgroundHidden);
+        Assert(ReferenceEquals(header.WithListRowBackgroundHidden(), header)
+            && header.ListRowBackgroundHidden);
+        header.WithListRowBackgroundHidden(false);
+        Assert(!header.ListRowBackgroundHidden);
+        header.WithListRowBackgroundHidden();
+        using var root = Views.Form(Views.Section(string.Empty, header));
+        using var host = SwiftUIHost.CreateView(root);
+        Assert(host is NSView);
+        SwiftUIHost.DetachView(root, host);
+    }),
     ("a view can keep its ideal size, opt-in, never on a flexible axis", () =>
     {
         using var badge = Views.Text("Failed");

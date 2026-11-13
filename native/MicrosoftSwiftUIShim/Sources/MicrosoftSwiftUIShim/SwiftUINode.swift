@@ -255,6 +255,10 @@ public final class MSUNode: NSObject, ObservableObject {
     /// A toggle node draws only its switch (SwiftUI `labelsHidden`); its text stays the
     /// accessible name. Off by default, so existing toggles keep their label.
     @objc public var labelsHidden = false { willSet { objectWillChange.send() } }
+    /// A Form or List row draws no row background (SwiftUI `listRowBackground(Color.clear)`),
+    /// so a header such as an app mark sits on the page above the grouped rows. Off by
+    /// default, so existing rows keep the system background.
+    @objc public var listRowBackgroundHidden = false { willSet { objectWillChange.send() } }
     /// How dragging a scroll node dismisses the software keyboard (SwiftUI
     /// `scrollDismissesKeyboard`): "" keeps the system's automatic behavior, or "immediately",
     /// "interactively" or "never".
@@ -2204,6 +2208,7 @@ struct SwiftUINodeView: View {
             .opacity(node.opacity))
             .modifier(FixedSizing(horizontal: node.fixedHorizontalSize,
                                   vertical: node.fixedVerticalSize))
+            .modifier(ListRowBackgroundHidden(hidden: node.listRowBackgroundHidden))
     }
 
     @ViewBuilder
@@ -3057,6 +3062,21 @@ struct FixedSizing: ViewModifier {
     func body(content: Content) -> some View {
         if horizontal || vertical {
             content.fixedSize(horizontal: horizontal, vertical: vertical)
+        } else {
+            content
+        }
+    }
+}
+
+/// Opt-in `listRowBackground(Color.clear)`: inside a Form or List the row draws no background;
+/// outside one it has no effect. Nothing is applied when off, so existing rows keep theirs.
+struct ListRowBackgroundHidden: ViewModifier {
+    let hidden: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if hidden {
+            content.listRowBackground(Color.clear)
         } else {
             content
         }

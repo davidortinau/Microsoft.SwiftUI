@@ -414,6 +414,9 @@ interface MSUNode
     [Export("labelsHidden")]
     bool LabelsHidden { get; set; }
 
+    [Export("listRowBackgroundHidden")]
+    bool ListRowBackgroundHidden { get; set; }
+
     [Export("scrollDismissesKeyboard")]
     string ScrollDismissesKeyboard { get; set; }
 
