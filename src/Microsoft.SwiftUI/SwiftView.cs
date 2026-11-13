@@ -1833,8 +1833,9 @@ public sealed class SwiftView : IDisposable
     internal void SetSelectedValueChangedHandler(Action<string> handler)
     {
         RequireActive();
-        if (Kind is not ("valuePicker" or "splitView"))
-            throw new InvalidOperationException($"Expected a value picker or split view node, not {Kind}.");
+        // A searchable reports its remaining search tokens through it.
+        if (Kind is not ("valuePicker" or "splitView" or "searchable"))
+            throw new InvalidOperationException($"Expected a value picker, split view or searchable node, not {Kind}.");
         if (_nativeHandlersActive)
             _native.SetSelectedValueChangedHandler(handler);
         _selectedValueChangedHandler = handler;
