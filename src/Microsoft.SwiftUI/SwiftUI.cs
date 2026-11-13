@@ -706,6 +706,19 @@ public static class SwiftUI
                                                 params SwiftView[] actions) =>
         PresentWithActions("confirmationDialog", content, title, "", actions);
 
+    /// <summary>
+    /// A confirmation dialog that reports when it closes by any means (an action, Cancel, or a
+    /// tap outside it), so the host can clear the state that presented it.
+    /// </summary>
+    public static SwiftView ConfirmationDialog(SwiftView content, string title, Action onDismissed,
+                                                params SwiftView[] actions)
+    {
+        ArgumentNullException.ThrowIfNull(onDismissed);
+        var dialog = PresentWithActions("confirmationDialog", content, title, "", actions);
+        dialog.SetDismissedHandler(onDismissed);
+        return dialog;
+    }
+
     private static SwiftView PresentWithActions(string kind, SwiftView content, string title,
                                                 string message, SwiftView[] actions)
     {

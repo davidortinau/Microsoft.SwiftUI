@@ -2798,7 +2798,10 @@ struct SwiftUINodeView: View {
                     SwiftUINodeView(node: root)
                         .alert(node.text, isPresented: Binding(
                             get: { node.isPresented },
-                            set: { node.isPresented = $0 }
+                            set: { next in
+                                node.isPresented = next
+                                if !next { node.dismissedHandler?() }
+                            }
                         )) {
                             ForEach(node.children.dropFirst(), id: \.id) { SwiftUINodeView(node: $0) }
                         } message: {
@@ -2812,7 +2815,10 @@ struct SwiftUINodeView: View {
                     SwiftUINodeView(node: root)
                         .confirmationDialog(node.text, isPresented: Binding(
                             get: { node.isPresented },
-                            set: { node.isPresented = $0 }
+                            set: { next in
+                                node.isPresented = next
+                                if !next { node.dismissedHandler?() }
+                            }
                         ), titleVisibility: .visible) {
                             ForEach(node.children.dropFirst(), id: \.id) { SwiftUINodeView(node: $0) }
                         }

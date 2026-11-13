@@ -1518,6 +1518,11 @@ var cases = new (string Name, Action Test)[]
     {
         var called = 0;
         var list = Views.Searchable(Views.List(Views.Text("Result")), "Find", onChanged: _ => { });
+        // A confirmation dialog can report its dismissal.
+        using var dismissible = Views.ConfirmationDialog(Views.Text("Page"), "Delete?",
+            () => called++, Views.Button("Delete", () => { }).WithButtonRole(SwiftButtonRole.Destructive));
+        dismissible.IsPresented = true;
+        Assert(dismissible.IsPresented && dismissible.Kind == "confirmationDialog");
         // Swipe rows: the row, trailing then leading Buttons; roles and labels.
         var delete = Views.Button(Views.Label("Delete", "trash"), () => called++)
             .WithButtonRole(SwiftButtonRole.Destructive);
