@@ -2258,10 +2258,17 @@ struct SwiftUINodeView: View {
         else { view.accessibilityIdentifier(node.automationId) }
     }
 
-    /// The title, and the subtitle when there is one.
+    /// The title, and under it the subtitle. A titled node always carries the subtitle
+    /// modifier (its text may be empty), so a subtitle coming and going never changes the view's
+    /// identity; an untitled node never sets one, so it cannot clear a parent's.
+    @ViewBuilder
     private func titled<V: View>(_ view: V) -> some View {
-        titledWithoutSubtitle(view)
-            .modifier(NavigationSubtitle(text: node.navigationTitle.isEmpty ? "" : node.navigationSubtitle))
+        if node.navigationTitle.isEmpty {
+            view
+        } else {
+            AnyView(titledWithoutSubtitle(view)
+                .modifier(NavigationSubtitle(text: node.navigationSubtitle)))
+        }
     }
 
     @ViewBuilder
@@ -3131,18 +3138,14 @@ private struct NavigationSubtitle: ViewModifier {
     let text: String
 
     func body(content: Content) -> some View {
-        if text.isEmpty {
-            content
-        } else {
-            #if os(iOS)
-            if #available(iOS 26.0, *) {
-                content.navigationSubtitle(text)
-            } else {
-                content
-            }
-            #else
+        #if os(iOS)
+        if #available(iOS 26.0, *) {
             content.navigationSubtitle(text)
-            #endif
+        } else {
+            content
         }
+        #else
+        content.navigationSubtitle(text)
+        #endif
     }
 }
