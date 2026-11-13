@@ -18,8 +18,9 @@ struct AdaptiveTabViewNodeView: View {
                 node.selectionChangedHandler?(next)
             }
         )) {
-            ForEach(node.children.indices, id: \.self) { index in
-                tab(node.children[index], index: index)
+            // By child, not by index: a stale index read after the tabs change traps.
+            ForEach(Array(node.children.enumerated()), id: \.element.id) { index, child in
+                tab(child, index: index)
             }
         }
         let styled = Group {

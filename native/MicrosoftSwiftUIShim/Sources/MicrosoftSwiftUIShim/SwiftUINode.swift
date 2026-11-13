@@ -370,6 +370,13 @@ public final class MSUNode: NSObject, ObservableObject {
         }
     }
 
+    /// The child at `index`, or nil when there is none: for view bodies SwiftUI builds after
+    /// the guard that checked the count (a sheet's content, an overlay), when the children may
+    /// have changed in between.
+    func child(_ index: Int) -> MSUNode? {
+        index >= 0 && index < children.count ? children[index] : nil
+    }
+
     @objc(insertChild:atIndex:)
     public func insertChild(_ child: MSUNode, at index: Int) {
         precondition(index >= 0 && index <= children.count, "Child index out of range")
@@ -1533,8 +1540,9 @@ private struct HorizontalGridNodeView: View {
                     GridRow {
                         ForEach(Array(row.children.enumerated()), id: \.element.id) { index, cell in
                             SwiftUINodeView(node: cell)
-                                .frame(minWidth: CGFloat(truncating:
-                                    node.gridColumnMinimumWidths[index]), alignment: .leading)
+                                .frame(minWidth: index < node.gridColumnMinimumWidths.count
+                                    ? CGFloat(truncating: node.gridColumnMinimumWidths[index]) : 0,
+                                    alignment: .leading)
                         }
                     }
                     .id(row.id)
@@ -1729,13 +1737,17 @@ private struct PhotoCoverNodeView: View {
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { node.isPresented = false }
-            SwiftUINodeView(node: node.children[1])
-                .padding(16)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            SwiftUINodeView(node: node.children[2])
-                .frame(minWidth: 44, minHeight: 44)
-                .background(.white.opacity(0.15), in: Circle())
-                .padding(16)
+            if let photo = node.child(1) {
+                SwiftUINodeView(node: photo)
+                    .padding(16)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            if let close = node.child(2) {
+                SwiftUINodeView(node: close)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .background(.white.opacity(0.15), in: Circle())
+                    .padding(16)
+            }
         }
         .focusable()
         .focused($viewerFocused)
@@ -2416,8 +2428,9 @@ struct SwiftUINodeView: View {
                 node.selectionChangedHandler?(next)
             }
         )) {
-            ForEach(node.children.indices, id: \.self) { index in
-                PickerOptionNodeView(node: node.children[index], index: index)
+            // By child, not by index: a stale index read after the options change traps.
+            ForEach(Array(node.children.enumerated()), id: \.element.id) { index, option in
+                PickerOptionNodeView(node: option, index: index)
             }
         }
         .accessibilityIdentifier(node.automationId)
@@ -2562,7 +2575,7 @@ struct SwiftUINodeView: View {
                 if node.children.count == 2 {
                     SwiftUINodeView(node: node.children[0])
                         .safeAreaInset(edge: .bottom, spacing: 0) {
-                            SwiftUINodeView(node: node.children[1])
+                            if let inset = node.child(1) { SwiftUINodeView(node: inset) }
                         }
                 }
             }
@@ -2618,8 +2631,8 @@ struct SwiftUINodeView: View {
                         node.selectionChangedHandler?(next)
                     }
                 )) {
-                    ForEach(node.children.indices, id: \.self) { index in
-                        SwiftUINodeView(node: node.children[index]).tag(index)
+                    ForEach(Array(node.children.enumerated()), id: \.element.id) { index, tab in
+                        SwiftUINodeView(node: tab).tag(index)
                     }
                 }
             }
@@ -2660,17 +2673,21 @@ struct SwiftUINodeView: View {
                         ), onDismiss: {
                             node.dismissedHandler?()
                         }) {
-                            #if os(iOS)
-                            if node.sheetDetentFraction > 0 {
-                                SwiftUINodeView(node: node.children[1])
-                                    .presentationDetents([.fraction(node.sheetDetentFraction)])
-                                    .presentationBackgroundInteraction(.disabled)
-                            } else {
-                                SwiftUINodeView(node: node.children[1])
+                            // The sheet body is built later than the guard above; the children
+                            // can change in between (a theme redraw), so it reads them again.
+                            if let modal = node.child(1) {
+                                #if os(iOS)
+                                if node.sheetDetentFraction > 0 {
+                                    SwiftUINodeView(node: modal)
+                                        .presentationDetents([.fraction(node.sheetDetentFraction)])
+                                        .presentationBackgroundInteraction(.disabled)
+                                } else {
+                                    SwiftUINodeView(node: modal)
+                                }
+                                #else
+                                SwiftUINodeView(node: modal)
+                                #endif
                             }
-                            #else
-                            SwiftUINodeView(node: node.children[1])
-                            #endif
                         }
                 }
             }
@@ -2682,7 +2699,9 @@ struct SwiftUINodeView: View {
                             get: { node.isPresented },
                             set: { next in node.applyInspectorPresentation(next) }
                         )) {
-                            InspectorContentView(node: node, content: node.children[1])
+                            if let inspector = node.child(1) {
+                                InspectorContentView(node: node, content: inspector)
+                            }
                         }
                 }
             }
@@ -3006,7 +3025,7 @@ struct OverlayNodeView: View {
             SwiftUINodeView(node: node.children[0])
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .overlay(alignment: node.overlayEdge == "top" ? .top : .bottom) {
-                    SwiftUINodeView(node: node.children[1])
+                    if let overlay = node.child(1) { SwiftUINodeView(node: overlay) }
                 }
         }
     }
