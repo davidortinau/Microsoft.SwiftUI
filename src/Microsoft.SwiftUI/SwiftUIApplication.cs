@@ -167,6 +167,15 @@ public enum SwiftButtonRole
     Cancel,
 }
 
+/// <summary>Where a searchable's field goes.</summary>
+public enum SwiftSearchPlacement
+{
+    /// <summary>The system's choice (the navigation bar, revealed by pulling down).</summary>
+    Automatic,
+    /// <summary>The bottom toolbar, as in Notes and Mail (iOS 26); it rises above the keyboard while typing.</summary>
+    BottomBar,
+}
+
 /// <summary>A search token shown inside a searchable's field (SwiftUI <c>searchable(text:tokens:)</c>).</summary>
 public sealed record SwiftSearchToken(string Id, string Title);
 

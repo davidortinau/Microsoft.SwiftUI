@@ -14,5 +14,11 @@ final class SearchTokensTests: XCTestCase {
         search.focusRequested = true
         _ = SwiftUINodeView(node: search).body
         XCTAssertEqual(search.searchTokenIds, ["language", "type"])
+        search.searchPlacement = "bottomBar"
+        _ = SwiftUINodeView(node: search).body
+        let titled = MSUBridge.makeNode(kind: "vstack")
+        titled.navigationTitle = "Resources"
+        titled.navigationSubtitle = "92 resources"
+        _ = SwiftUINodeView(node: titled).body
     }
 }

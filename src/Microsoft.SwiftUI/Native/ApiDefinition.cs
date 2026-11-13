@@ -25,6 +25,12 @@ interface MSUNode
     [Export("placeholder")]
     string Placeholder { get; set; }
 
+    [Export("navigationSubtitle")]
+    string NavigationSubtitle { get; set; }
+
+    [Export("searchPlacement")]
+    string SearchPlacement { get; set; }
+
     [Export("searchTokenIds", ArgumentSemantic.Copy)]
     string[] SearchTokenIds { get; set; }
 

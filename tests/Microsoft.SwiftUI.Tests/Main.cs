@@ -1549,6 +1549,12 @@ var cases = new (string Name, Action Test)[]
             [new SwiftSearchToken("a", "A"), new SwiftSearchToken("a", "B")]);
         Throws<ArgumentException>(() => tokenSearch.SearchTokens = [new SwiftSearchToken("", "A")]);
         Throws<InvalidOperationException>(() => list.Children[0].SearchTokens = []);
+        Assert(ReferenceEquals(tokenSearch.WithSearchPlacement(SwiftSearchPlacement.BottomBar), tokenSearch));
+        Throws<ArgumentOutOfRangeException>(() => tokenSearch.WithSearchPlacement((SwiftSearchPlacement)9));
+        Throws<InvalidOperationException>(() => list.Children[0].WithSearchPlacement(SwiftSearchPlacement.BottomBar));
+        var titled = Views.VStack().WithNavigationTitle("Resources").WithNavigationSubtitle("92 resources");
+        Assert(titled.NavigationSubtitle == "92 resources");
+        titled.Dispose();
         tokenSearch.FocusRequested = true;
         Assert(tokenSearch.FocusRequested);
         tokenSearch.Dispose();

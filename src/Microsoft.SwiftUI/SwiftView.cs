@@ -713,6 +713,38 @@ public sealed class SwiftView : IDisposable
         return this;
     }
 
+    /// <summary>
+    /// A subtitle under the navigation title (SwiftUI <c>navigationSubtitle</c>, iOS 26), e.g.
+    /// a count as in Notes; empty removes it.
+    /// </summary>
+    public SwiftView WithNavigationSubtitle(string subtitle)
+    {
+        RequireActive();
+        subtitle ??= throw new ArgumentNullException(nameof(subtitle));
+        if (_native.NavigationSubtitle != subtitle)
+            _native.NavigationSubtitle = subtitle;
+        return this;
+    }
+
+    /// <summary>The subtitle set by <see cref="WithNavigationSubtitle"/>.</summary>
+    public string NavigationSubtitle
+    {
+        get { RequireActive(); return _native.NavigationSubtitle; }
+    }
+
+    /// <summary>Where this searchable's field goes (default: the system's choice).</summary>
+    public SwiftView WithSearchPlacement(SwiftSearchPlacement placement)
+    {
+        RequireKind("searchable");
+        _native.SearchPlacement = placement switch
+        {
+            SwiftSearchPlacement.Automatic => "",
+            SwiftSearchPlacement.BottomBar => "bottomBar",
+            _ => throw new ArgumentOutOfRangeException(nameof(placement)),
+        };
+        return this;
+    }
+
     public SwiftView WithInlineNavigationTitle(bool inline = true)
     {
         RequireActive();

@@ -235,6 +235,17 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var gridColumns = 2 { willSet { objectWillChange.send() } }
     @objc public var gridColumnMinimumWidths: [NSNumber] = [] { willSet { objectWillChange.send() } }
     @objc public var navigationTitle = "" { willSet { objectWillChange.send() } }
+    /// A subtitle under the navigation title (`navigationSubtitle`, iOS 26), e.g. a count.
+    @objc public var navigationSubtitle = "" { willSet { objectWillChange.send() } }
+    /// Where a searchable's field goes: "" (the system's choice) or "bottomBar" (the bottom
+    /// toolbar, as in Notes and Mail; it rises above the keyboard while typing).
+    @objc public var searchPlacement = "" {
+        willSet {
+            precondition(["", "bottomBar"].contains(newValue),
+                         "Unsupported search placement: \(newValue)")
+            objectWillChange.send()
+        }
+    }
     @objc public var inlineNavigationTitle = false { willSet { objectWillChange.send() } }
     @objc public var centerWhenShort = false { willSet { objectWillChange.send() } }
     @objc public var anchorsToBottom = false { willSet { objectWillChange.send() } }
@@ -2247,8 +2258,14 @@ struct SwiftUINodeView: View {
         else { view.accessibilityIdentifier(node.automationId) }
     }
 
-    @ViewBuilder
+    /// The title, and the subtitle when there is one.
     private func titled<V: View>(_ view: V) -> some View {
+        titledWithoutSubtitle(view)
+            .modifier(NavigationSubtitle(text: node.navigationTitle.isEmpty ? "" : node.navigationSubtitle))
+    }
+
+    @ViewBuilder
+    private func titledWithoutSubtitle<V: View>(_ view: V) -> some View {
         if node.navigationTitle.isEmpty { view }
         else {
             #if os(iOS)
@@ -3043,6 +3060,7 @@ private struct SearchableNodeView: View {
                     Text(token.title)
                 }
                 .modifier(SearchFocus(focused: $focused))
+                .modifier(SearchBottomBar(enabled: node.searchPlacement == "bottomBar"))
                 .onChange(of: node.focusRequested, initial: true) { _, next in focused = next }
                 .onChange(of: focused) { _, next in
                     if node.focusRequested != next { node.focusRequested = next }
@@ -3084,6 +3102,47 @@ private struct SwipeRowNodeView: View {
                 .swipeActions(edge: .leading, allowsFullSwipe: false) {
                     ForEach(leadingActions, id: \.id) { SwiftUINodeView(node: $0) }
                 }
+        }
+    }
+}
+
+/// The search field in the bottom toolbar (iOS 26, `DefaultToolbarItem(kind: .search,
+/// placement: .bottomBar)`); elsewhere the system's placement.
+private struct SearchBottomBar: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if enabled, #available(iOS 26.0, *) {
+            content.toolbar {
+                DefaultToolbarItem(kind: .search, placement: .bottomBar)
+            }
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}
+
+/// `navigationSubtitle` where the system has it (iOS 26, macOS 11).
+private struct NavigationSubtitle: ViewModifier {
+    let text: String
+
+    func body(content: Content) -> some View {
+        if text.isEmpty {
+            content
+        } else {
+            #if os(iOS)
+            if #available(iOS 26.0, *) {
+                content.navigationSubtitle(text)
+            } else {
+                content
+            }
+            #else
+            content.navigationSubtitle(text)
+            #endif
         }
     }
 }
