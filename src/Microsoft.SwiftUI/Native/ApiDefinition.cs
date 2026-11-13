@@ -31,6 +31,9 @@ interface MSUNode
     [Export("searchPlacement")]
     string SearchPlacement { get; set; }
 
+    [Export("searchKeepsToolbar")]
+    bool SearchKeepsToolbar { get; set; }
+
     [Export("searchTokenIds", ArgumentSemantic.Copy)]
     string[] SearchTokenIds { get; set; }
 

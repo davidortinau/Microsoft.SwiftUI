@@ -15,6 +15,7 @@ final class SearchTokensTests: XCTestCase {
         _ = SwiftUINodeView(node: search).body
         XCTAssertEqual(search.searchTokenIds, ["language", "type"])
         search.searchPlacement = "bottomBar"
+        search.searchKeepsToolbar = true
         _ = SwiftUINodeView(node: search).body
         let titled = MSUBridge.makeNode(kind: "vstack")
         titled.navigationTitle = "Resources"

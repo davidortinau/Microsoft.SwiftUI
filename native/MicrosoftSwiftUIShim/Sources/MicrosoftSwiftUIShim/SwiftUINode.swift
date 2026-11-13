@@ -239,6 +239,9 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var navigationSubtitle = "" { willSet { objectWillChange.send() } }
     /// Where a searchable's field goes: "" (the system's choice) or "bottomBar" (the bottom
     /// toolbar, as in Notes and Mail; it rises above the keyboard while typing).
+    /// While searching, keep the toolbar's other items (filters, add) instead of hiding them
+    /// (`searchPresentationToolbarBehavior(.avoidHidingContent)`, iOS 17.1).
+    @objc public var searchKeepsToolbar = false { willSet { objectWillChange.send() } }
     @objc public var searchPlacement = "" {
         willSet {
             precondition(["", "bottomBar"].contains(newValue),
@@ -3068,6 +3071,7 @@ private struct SearchableNodeView: View {
                 }
                 .modifier(SearchFocus(focused: $focused))
                 .modifier(SearchBottomBar(enabled: node.searchPlacement == "bottomBar"))
+                .modifier(SearchKeepsToolbar(enabled: node.searchKeepsToolbar))
                 .onChange(of: node.focusRequested, initial: true) { _, next in focused = next }
                 .onChange(of: focused) { _, next in
                     if node.focusRequested != next { node.focusRequested = next }
@@ -3146,6 +3150,23 @@ private struct NavigationSubtitle: ViewModifier {
         }
         #else
         content.navigationSubtitle(text)
+        #endif
+    }
+}
+
+/// Keeps a toolbar's other items while searching (iOS 17.1); otherwise the system default.
+private struct SearchKeepsToolbar: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if #available(iOS 17.1, *) {
+            content.searchPresentationToolbarBehavior(enabled ? .avoidHidingContent : .automatic)
+        } else {
+            content
+        }
+        #else
+        content
         #endif
     }
 }

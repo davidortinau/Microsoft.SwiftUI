@@ -732,6 +732,18 @@ public sealed class SwiftView : IDisposable
         get { RequireActive(); return _native.NavigationSubtitle; }
     }
 
+    /// <summary>
+    /// While searching, keep the toolbar's other items (filters, add) instead of letting the
+    /// system hide them (SwiftUI <c>searchPresentationToolbarBehavior(.avoidHidingContent)</c>).
+    /// </summary>
+    public SwiftView WithSearchKeepingToolbar(bool keep = true)
+    {
+        RequireKind("searchable");
+        if (_native.SearchKeepsToolbar != keep)
+            _native.SearchKeepsToolbar = keep;
+        return this;
+    }
+
     /// <summary>Where this searchable's field goes (default: the system's choice).</summary>
     public SwiftView WithSearchPlacement(SwiftSearchPlacement placement)
     {
