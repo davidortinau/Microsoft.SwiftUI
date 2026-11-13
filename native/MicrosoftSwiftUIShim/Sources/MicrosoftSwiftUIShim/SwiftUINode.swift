@@ -2813,7 +2813,11 @@ struct SwiftUINodeView: View {
                         .toolbar {
                             ToolbarItemGroup(placement: .automatic) {
                                 ForEach(node.children.dropFirst(), id: \.id) { item in
+                                    // A toolbar item is drawn as a hosted view, so it does not get
+                                    // the bar's own large content viewer; long press shows its
+                                    // title and symbol (as a tab does) while the viewer is on.
                                     SwiftUINodeView(node: item)
+                                        .accessibilityShowsLargeContentViewer()
                                 }
                             }
                         }
