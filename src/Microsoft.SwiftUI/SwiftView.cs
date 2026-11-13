@@ -1194,7 +1194,8 @@ public sealed class SwiftView : IDisposable
     /// <summary>
     /// Whether the split view leaves out its sidebar toggle (SwiftUI
     /// <c>toolbar(removing: .sidebarToggle)</c> on the sidebar column); default false, so the
-    /// toggle shows. For a host that shows the sidebar's contents in another column.
+    /// toggle shows. Without its toggle the system keeps the sidebar shown beside the other
+    /// columns (observed on iPadOS 27.1), since nothing else could bring it back.
     /// </summary>
     public bool SidebarToggleHidden
     {
