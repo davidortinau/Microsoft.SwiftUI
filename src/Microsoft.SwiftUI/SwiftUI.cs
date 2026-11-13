@@ -258,6 +258,19 @@ public static class SwiftUI
     }
 
     /// <summary>
+    /// A Form row with its title beside its content (SwiftUI <c>LabeledContent</c>): a text
+    /// field, a picker or a read-only value, aligned by the Form as in Settings and Contacts.
+    /// </summary>
+    public static SwiftView LabeledContent(string title, SwiftView content)
+    {
+        ArgumentNullException.ThrowIfNull(title);
+        SwiftView.ValidateChildren([content]);
+        var node = Create("labeledContent", title);
+        node.Attach(content);
+        return node;
+    }
+
+    /// <summary>
     /// A list row with swipe actions (SwiftUI <c>swipeActions(edge:)</c>): Buttons revealed by
     /// swiping left (<paramref name="trailing"/>) or right (<paramref name="leading"/>); none
     /// runs on a full swipe. A destructive Button removes its row when tapped, so an action

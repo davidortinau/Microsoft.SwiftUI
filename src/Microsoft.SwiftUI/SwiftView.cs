@@ -1663,11 +1663,12 @@ public sealed class SwiftView : IDisposable
     /// <c>scrollDismissesKeyboard</c>), for example so a page with a multiline editor can put
     /// the keyboard away. <see cref="SwiftScrollDismissesKeyboard.Automatic"/> (the default)
     /// keeps the system's behavior; scrollable views inside the content (a TextEditor, a nested
-    /// Scroll) keep their own default. Set it before the Scroll is mounted.
+    /// Scroll) keep their own default. Set it before the Scroll is mounted. A Form or List takes
+    /// it too, for its rows.
     /// </summary>
     public SwiftView WithScrollDismissesKeyboard(SwiftScrollDismissesKeyboard mode)
     {
-        RequireKind("scroll");
+        RequireScrollingKind();
         _native.ScrollDismissesKeyboard = mode switch
         {
             SwiftScrollDismissesKeyboard.Automatic => "",
@@ -1684,7 +1685,7 @@ public sealed class SwiftView : IDisposable
     {
         get
         {
-            RequireKind("scroll");
+            RequireScrollingKind();
             return _native.ScrollDismissesKeyboard switch
             {
                 "immediately" => SwiftScrollDismissesKeyboard.Immediately,
@@ -2153,6 +2154,13 @@ public sealed class SwiftView : IDisposable
         RequireActive();
         if (Kind is not ("image" or "label"))
             throw new InvalidOperationException($"Expected an image or label node, not {Kind}.");
+    }
+
+    private void RequireScrollingKind()
+    {
+        RequireActive();
+        if (Kind is not ("scroll" or "form" or "list"))
+            throw new InvalidOperationException($"Expected a scroll, form or list node, not {Kind}.");
     }
 
     private void RequireKind(string kind)

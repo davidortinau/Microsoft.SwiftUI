@@ -1535,6 +1535,13 @@ var cases = new (string Name, Action Test)[]
         Assert(delete.Children[0].Kind == "label" && delete.Children[0].Text == "Delete");
         Throws<ArgumentException>(() => Views.SwipeRow(Views.Text("Row"), [Views.Text("Not a button")]));
         Throws<ArgumentOutOfRangeException>(() => study.WithButtonRole((SwiftButtonRole)9));
+        // Labeled content: a Form row's title beside its one content view.
+        var titleField = Views.TextField("Required", "Int1.2", _ => { });
+        using var labeledForm = Views.Form(Views.LabeledContent("Title", titleField));
+        var labeled = labeledForm.Children[0];
+        Assert(labeled.Kind == "labeledContent" && labeled.Text == "Title"
+            && labeled.Children.Count == 1 && ReferenceEquals(labeled.Children[0], titleField));
+        Throws<ArgumentNullException>(() => Views.LabeledContent(null!, Views.Text("Value")));
         // Search tokens: shown in the field in order, replaced in place, validated; focus works
         // as on a text field.
         var tokenSearch = Views.Searchable(Views.List(Views.Text("Words")), "Search", "pizza",

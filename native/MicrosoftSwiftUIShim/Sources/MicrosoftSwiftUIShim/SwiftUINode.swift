@@ -360,7 +360,7 @@ public final class MSUNode: NSObject, ObservableObject {
             "progress", "bottomInset", "circle", "divider", "indeterminateProgress",
             "photo", "zoomPhoto", "photoCover", "quickSuggestions",
             "starterOverlay", "deleteConfirmation", "photoPicker", "youTubePlayer",
-            "overlay", "splitView", "swipeRow", "label"
+            "overlay", "splitView", "swipeRow", "label", "labeledContent"
         ].contains(kind), "Unsupported SwiftUI node kind: \(kind)")
         self.kind = kind
         super.init()
@@ -1564,6 +1564,12 @@ private struct NativeCollectionNodeView: View {
         }
     }
 
+    /// A row keeps the system default for its own scrolling views (a TextEditor) when the
+    /// collection sets a keyboard dismissal mode.
+    private var rowKeyboardMode: String {
+        node.scrollDismissesKeyboard.isEmpty ? "" : "automatic"
+    }
+
     @ViewBuilder
     var body: some View {
         if node.kind == "form" {
@@ -1571,14 +1577,16 @@ private struct NativeCollectionNodeView: View {
                 ForEach(node.children, id: \.id) { child in
                     if node.nativeListRowHex.isEmpty {
                         SwiftUINodeView(node: child)
+                            .modifier(ScrollKeyboardDismissal(mode: rowKeyboardMode))
                     } else {
                         SwiftUINodeView(node: child)
+                            .modifier(ScrollKeyboardDismissal(mode: rowKeyboardMode))
                             .listRowBackground(msuAdaptiveColor(node.nativeListRowHex,
                                                                 node.nativeListRowDarkHex,
                                                                 scheme: colorScheme))
                     }
                 }
-            })
+            }.modifier(ScrollKeyboardDismissal(mode: node.scrollDismissesKeyboard)))
         } else {
             ScrollTargetReader(node: node) { canvas(List {
                 ForEach(node.children, id: \.id) { child in
@@ -2567,7 +2575,8 @@ struct SwiftUINodeView: View {
                 Section {
                     ForEach(node.children, id: \.id) { SwiftUINodeView(node: $0) }
                 } header: {
-                    Text(node.text)
+                    // An untitled Section has no header (a Form's first rows, a lone button).
+                    if !node.text.isEmpty { Text(node.text) }
                 }
             }
         case "grid":
@@ -2783,6 +2792,19 @@ struct SwiftUINodeView: View {
         case "swipeRow":
             return erased {
                 SwipeRowNodeView(node: node)
+            }
+        case "labeledContent":
+            return erased {
+                if let content = node.children.first {
+                    LabeledContent {
+                        // A field's text sits at the trailing edge, beside its label, as in
+                        // Settings (a value Text already does).
+                        SwiftUINodeView(node: content)
+                            .multilineTextAlignment(.trailing)
+                    } label: {
+                        Text(node.text)
+                    }
+                }
             }
         case "label":
             return erased {
