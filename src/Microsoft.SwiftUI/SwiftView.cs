@@ -302,12 +302,16 @@ public sealed class SwiftView : IDisposable
     /// The SF Symbol an <see cref="SwiftUI.Image"/> shows. Settable in place, so a toolbar button
     /// can change its symbol (a filled filter icon once a filter is on) without being rebuilt.
     /// </summary>
+    /// <summary>
+    /// The SF Symbol of an Image, or of a Label (its title is <see cref="Text"/>), changed in
+    /// place: a toolbar's buttons cannot be replaced, only updated.
+    /// </summary>
     public string SystemImageName
     {
-        get { RequireKind("image"); return _native.ImageName; }
+        get { RequireSymbolKind(); return _native.ImageName; }
         set
         {
-            RequireKind("image");
+            RequireSymbolKind();
             ArgumentException.ThrowIfNullOrWhiteSpace(value);
             _native.ImageName = value;
         }
@@ -2145,6 +2149,13 @@ public sealed class SwiftView : IDisposable
         }
         foreach (var child in _children)
             child.RestoreNativeHandlers();
+    }
+
+    private void RequireSymbolKind()
+    {
+        RequireActive();
+        if (Kind is not ("image" or "label"))
+            throw new InvalidOperationException($"Expected an image or label node, not {Kind}.");
     }
 
     private void RequireKind(string kind)

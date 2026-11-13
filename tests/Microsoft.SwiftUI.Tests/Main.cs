@@ -1551,6 +1551,10 @@ var cases = new (string Name, Action Test)[]
         Throws<InvalidOperationException>(() => list.Children[0].SearchTokens = []);
         Assert(ReferenceEquals(tokenSearch.WithSearchPlacement(SwiftSearchPlacement.BottomBar), tokenSearch));
         Assert(ReferenceEquals(tokenSearch.WithSearchKeepingToolbar(), tokenSearch));
+        var archiveLabel = Views.Label("Archive", "archivebox");
+        archiveLabel.SystemImageName = "arrow.uturn.backward";
+        Assert(archiveLabel.SystemImageName == "arrow.uturn.backward");
+        Throws<InvalidOperationException>(() => Views.Text("x").SystemImageName = "star");
         Throws<InvalidOperationException>(() => list.Children[0].WithSearchKeepingToolbar());
         Throws<ArgumentOutOfRangeException>(() => tokenSearch.WithSearchPlacement((SwiftSearchPlacement)9));
         Throws<InvalidOperationException>(() => list.Children[0].WithSearchPlacement(SwiftSearchPlacement.BottomBar));
