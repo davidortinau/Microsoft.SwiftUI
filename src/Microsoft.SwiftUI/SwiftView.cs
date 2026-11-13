@@ -720,7 +720,7 @@ public sealed class SwiftView : IDisposable
     public SwiftView WithNavigationSubtitle(string subtitle)
     {
         RequireActive();
-        subtitle ??= throw new ArgumentNullException(nameof(subtitle));
+        ArgumentNullException.ThrowIfNull(subtitle);
         if (_native.NavigationSubtitle != subtitle)
             _native.NavigationSubtitle = subtitle;
         return this;
