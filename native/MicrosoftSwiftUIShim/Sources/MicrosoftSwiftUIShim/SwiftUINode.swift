@@ -3066,8 +3066,8 @@ private struct SearchFocus: ViewModifier {
 }
 
 /// A list row with swipe actions: its first child is the row, then the trailing actions, then
-/// `swipeLeadingCount` leading actions (`swipeActions(edge:)`). Trailing actions need a full
-/// swipe to be deliberate; a leading action runs on a full swipe.
+/// `swipeLeadingCount` leading actions (`swipeActions(edge:)`). Neither edge runs an action on
+/// a full swipe: the person taps the revealed action, so a long swipe never acts by itself.
 private struct SwipeRowNodeView: View {
     @ObservedObject var node: MSUNode
 
@@ -3081,7 +3081,7 @@ private struct SwipeRowNodeView: View {
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     ForEach(trailing, id: \.id) { SwiftUINodeView(node: $0) }
                 }
-                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                .swipeActions(edge: .leading, allowsFullSwipe: false) {
                     ForEach(leadingActions, id: \.id) { SwiftUINodeView(node: $0) }
                 }
         }

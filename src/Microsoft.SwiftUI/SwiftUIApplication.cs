@@ -159,7 +159,7 @@ public enum SwiftPhotoLoadState
 public sealed record SwiftPickerOption(string Value, string Title);
 
 /// <summary>A button's role (SwiftUI <c>ButtonRole</c>): destructive actions are red and,
-/// in swipe actions, remove their row.</summary>
+/// in swipe actions, remove their row when tapped.</summary>
 public enum SwiftButtonRole
 {
     None,

@@ -259,8 +259,9 @@ public static class SwiftUI
 
     /// <summary>
     /// A list row with swipe actions (SwiftUI <c>swipeActions(edge:)</c>): Buttons revealed by
-    /// swiping left (<paramref name="trailing"/>, never on a full swipe) or right
-    /// (<paramref name="leading"/>, the first runs on a full swipe). Use inside a List.
+    /// swiping left (<paramref name="trailing"/>) or right (<paramref name="leading"/>); none
+    /// runs on a full swipe. A destructive Button removes its row when tapped, so an action
+    /// that only asks first should use a tint instead. Use inside a List.
     /// </summary>
     public static SwiftView SwipeRow(SwiftView content, IReadOnlyList<SwiftView> trailing,
         IReadOnlyList<SwiftView>? leading = null)
