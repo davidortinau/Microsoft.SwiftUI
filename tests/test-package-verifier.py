@@ -231,19 +231,43 @@ def main() -> None:
                                         ET.tostring(document)))
         verify(package, fixture, "dependency groups are missing or duplicate")
 
+        # The platform version the SDK in use built, as the intact package names it, and one
+        # that is certainly another: a package from an earlier or a later SDK.
+        current = resource.split("/")[1]
+        if not current.startswith("net11.0-ios") or current == "net11.0-ios":
+            raise AssertionError(f"Unexpected iOS library folder: {current}")
+        other = "net11.0-ios26.5" if current != "net11.0-ios26.5" else "net11.0-ios27.0"
+
+        def ios_group(document: ET.Element) -> ET.Element:
+            return next(group for group in document.iter() if group.tag.endswith("group")
+                        and group.get("targetFramework") == current)
+
+        def rename_ios_folder(archive_bytes: bytes) -> bytes:
+            renamed = io.BytesIO()
+            count = 0
+            with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive, zipfile.ZipFile(renamed, "w") as modified:
+                for entry in archive.infolist():
+                    contents = archive.read(entry)
+                    if entry.filename.startswith(f"lib/{current}/"):
+                        entry.filename = entry.filename.replace(f"lib/{current}/", f"lib/{other}/", 1)
+                        count += 1
+                    modified.writestr(entry, contents)
+            if count != 3:
+                raise AssertionError(f"Expected to rename three iOS library entries, renamed {count}.")
+            return renamed.getvalue()
+
+        # A package that agrees with itself about another platform version is not this SDK's.
         document = ET.fromstring(nuspec)
-        group = next(group for group in document.iter() if group.tag.endswith("group"))
-        group.set("targetFramework", "net11.0-ios26.5")
+        ios_group(document).set("targetFramework", other)
         changed_nuspec = rewrite_zip(original, "Microsoft.SwiftUI.nuspec", ET.tostring(document))
-        renamed = io.BytesIO()
-        with zipfile.ZipFile(io.BytesIO(changed_nuspec)) as archive, zipfile.ZipFile(renamed, "w") as modified:
-            for entry in archive.infolist():
-                contents = archive.read(entry)
-                entry.filename = entry.filename.replace("lib/net11.0-ios27.0/",
-                                                        "lib/net11.0-ios26.5/", 1)
-                modified.writestr(entry, contents)
-        package.write_bytes(renamed.getvalue())
+        package.write_bytes(rename_ios_folder(changed_nuspec))
         verify(package, fixture, "dependency groups are missing or duplicate")
+
+        # The dependency group and the folders disagree about the platform version, either way.
+        package.write_bytes(changed_nuspec)
+        verify(package, fixture, "dependency groups are missing or duplicate")
+        package.write_bytes(rename_ios_folder(original))
+        verify(package, fixture, "Expected exactly one net11.0-ios assembly")
 
         document = ET.fromstring(nuspec)
         group = next(group for group in document.iter() if group.tag.endswith("group"))

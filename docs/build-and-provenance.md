@@ -557,10 +557,30 @@ platform's DLL, XML documentation, and native resource ZIP; unexpected
 The earlier packages used `net11.0-ios26.5` and `net11.0-macos26.5`.
 With the installed .NET 11 RC2 Apple bindings, the preview.15 package uses
 `net11.0-ios27.0` and `net11.0-macos27.0`; the verifier's exact allowlist
-now pins these two targets. The generated nuspec was compared with preview.14:
+then pinned these two targets by name. The generated nuspec was compared with preview.14:
 both have exactly two empty dependency groups and the same 13 allowed entries
-(only the target paths and library bytes differ). The corruption check now
+(only the target paths and library bytes differ). The corruption check
 rejects the earlier 26.5 group/path instead of accepting it as current.
+
+Since November 2026 the two targets are no longer written into the verifier.
+The .NET 11.0.100 SDK builds `net11.0-ios27.2` and `net11.0-macos27.2`, and the
+pinned names refused every package that SDK packed ("NuGet dependency groups
+are missing or duplicate the net11.0-ios platform target"). The allowlist is
+still exact, one target for each platform: the verifier reads the platform
+version from the `TargetPlatformAttribute` of each Release assembly that
+`scripts/pack-and-verify.sh` has just rebuilt (`iOS27.2`, `macOS27.2`), and the
+dependency group, the DLL, the XML documentation and the native resource ZIP
+must all be under exactly that target. It is not a rule that accepts any
+platform version: a package built for another one, by an earlier or a later
+SDK, is refused even when its group and its folders agree with each other, and
+so is one whose group and folders disagree. `tests/test-package-verifier.py`
+proves all three (it takes the current target from the intact package and uses
+26.5 as the other one). A rebuilt assembly that does not state exactly one
+target platform of its own kind fails the check.
+
+`tests/test-package-verifier.py` needs Python 3.10 or newer; where `python3` is
+older (macOS ships 3.9), run it with a newer one, such as
+`/opt/homebrew/bin/python3.14 tests/test-package-verifier.py`.
 The RC2 library-only binding build has `_CanOutputAppBundle=false`, so the
 normal Apple SDK target does not run its **app-only** Xcode-version gate.
 This does not relax `ValidateXcodeVersion` or qualify a C# iOS/macOS app:
