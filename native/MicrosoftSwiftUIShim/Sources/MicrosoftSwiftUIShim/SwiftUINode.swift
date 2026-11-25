@@ -259,6 +259,11 @@ public final class MSUNode: NSObject, ObservableObject {
     /// so a header such as an app mark sits on the page above the grouped rows. Off by
     /// default, so existing rows keep the system background.
     @objc public var listRowBackgroundHidden = false { willSet { objectWillChange.send() } }
+    /// A menu draws its custom label at the label's own width instead of filling the width
+    /// the menu is offered, so an icon-only menu beside flexible content stays icon-sized
+    /// and the neighbour keeps the room. Off by default, so existing menus keep a label
+    /// that fills its row and is tappable across it.
+    @objc public var menuLabelFitsContent = false { willSet { objectWillChange.send() } }
     /// How dragging a scroll node dismisses the software keyboard (SwiftUI
     /// `scrollDismissesKeyboard`): "" keeps the system's automatic behavior, or "immediately",
     /// "interactively" or "never".
@@ -2844,9 +2849,7 @@ struct SwiftUINodeView: View {
                     Menu {
                         ForEach(node.children.dropFirst(), id: \.id) { SwiftUINodeView(node: $0) }
                     } label: {
-                        SwiftUINodeView(node: label)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(.interaction, Rectangle())
+                        MenuLabel(label: label, fitsContent: node.menuLabelFitsContent)
                     }
                     .accessibilityValue(node.text)
                     .accessibilityIdentifier(node.automationId)
@@ -3068,6 +3071,27 @@ struct FixedSizing: ViewModifier {
             content.fixedSize(horizontal: horizontal, vertical: vertical)
         } else {
             content
+        }
+    }
+}
+
+/// A menu's custom label. By default it fills the width the menu is offered, leading-aligned,
+/// so a row-like label is tappable across the row. With `fitsContent` it keeps the label's own
+/// width (no frame is added), so the menu is as wide as its label and no wider. Either way the
+/// whole of the label's bounds takes the tap.
+struct MenuLabel: View {
+    let label: MSUNode
+    let fitsContent: Bool
+
+    @ViewBuilder
+    var body: some View {
+        if fitsContent {
+            SwiftUINodeView(node: label)
+                .contentShape(.interaction, Rectangle())
+        } else {
+            SwiftUINodeView(node: label)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(.interaction, Rectangle())
         }
     }
 }
