@@ -251,12 +251,18 @@ static void VerifyPackage(string path, string root, Dictionary<string, Framework
         "package/services/metadata/core-properties/nuget.psmdcp",
     };
 
-    foreach (var (tfm, target, methods) in new[]
+    foreach (var (tfm, methods) in new[]
     {
-        ("net11.0-ios", "net11.0-ios27.0", new[] { "DetachController" }),
-        ("net11.0-macos", "net11.0-macos27.0", new[] { "DetachController", "DetachView" }),
+        ("net11.0-ios", new[] { "DetachController" }),
+        ("net11.0-macos", new[] { "DetachController", "DetachView" }),
     })
     {
+        // The one target accepted for this platform is the one the SDK in use built: the
+        // rebuilt Release assembly states its platform version. A package made for any other
+        // platform version, by an earlier or a later SDK, has no group or folder that matches.
+        var built = File.ReadAllBytes(Path.Combine(root, "src/Microsoft.SwiftUI/bin/Release",
+            tfm, "Microsoft.SwiftUI.dll"));
+        var target = tfm + ReadPlatformVersion(built, tfm);
         var matchingGroups = groups.Where(group =>
             group.Attribute("targetFramework")!.Value == target).ToArray();
         Require(matchingGroups.Length == 1,
@@ -271,8 +277,6 @@ static void VerifyPackage(string path, string root, Dictionary<string, Framework
             entry.FullName == assemblyName).ToArray();
         Require(assemblies.Length == 1, $"Expected exactly one {tfm} assembly in the NuGet package.");
         var assembly = ReadEntry(assemblies[0]);
-        var built = File.ReadAllBytes(Path.Combine(root, "src/Microsoft.SwiftUI/bin/Release",
-            tfm, "Microsoft.SwiftUI.dll"));
         Require(assembly.AsSpan().SequenceEqual(built), $"{tfm} package assembly differs from the rebuilt Release assembly.");
         VerifyMethods(assembly, tfm, methods);
 
@@ -303,6 +307,37 @@ static void VerifyPackage(string path, string root, Dictionary<string, Framework
             $"NuGet document differs from the repository: {name}");
 
     Console.WriteLine($"Canonical NuGet package SHA-256 {Hash(packageBytes)}: {path}");
+}
+
+static string ReadPlatformVersion(byte[] assembly, string tfm)
+{
+    using var pe = new PEReader(new MemoryStream(assembly));
+    Require(pe.HasMetadata, $"The rebuilt {tfm} Release assembly has no managed metadata.");
+    var reader = pe.GetMetadataReader();
+    var stated = new List<string>();
+    foreach (var handle in reader.GetAssemblyDefinition().GetCustomAttributes())
+    {
+        var attribute = reader.GetCustomAttribute(handle);
+        if (attribute.Constructor.Kind != HandleKind.MemberReference)
+            continue;
+        var constructor = reader.GetMemberReference((MemberReferenceHandle)attribute.Constructor);
+        if (constructor.Parent.Kind != HandleKind.TypeReference)
+            continue;
+        var type = reader.GetTypeReference((TypeReferenceHandle)constructor.Parent);
+        if (TypeName(reader, type.Namespace, type.Name) != "System.Runtime.Versioning.TargetPlatformAttribute")
+            continue;
+        var value = reader.GetBlobReader(attribute.Value);
+        Require(value.ReadUInt16() == 1,
+            $"The rebuilt {tfm} Release assembly has an invalid target platform attribute.");
+        stated.Add(value.ReadSerializedString() ?? "");
+    }
+    // The SDK writes the platform's name and version, such as iOS27.2 for net11.0-ios27.2.
+    var platform = tfm[(tfm.IndexOf('-') + 1)..];
+    var match = Regex.Match(stated.Count == 1 ? stated[0] : "", @"^([A-Za-z]+)([0-9]+(?:\.[0-9]+){1,3})$");
+    Require(match.Success &&
+            string.Equals(match.Groups[1].Value, platform, StringComparison.OrdinalIgnoreCase),
+        $"The rebuilt {tfm} Release assembly does not state exactly one {platform} target platform version.");
+    return match.Groups[2].Value;
 }
 
 static void VerifyMethods(byte[] assembly, string tfm, string[] detachMethods)
