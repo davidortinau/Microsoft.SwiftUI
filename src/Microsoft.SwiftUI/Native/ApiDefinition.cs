@@ -390,6 +390,9 @@ interface MSUNode
     [Export("adaptiveStackBelowWidth")]
     double AdaptiveStackBelowWidth { get; set; }
 
+    [Export("stacksWhenTooWide")]
+    bool StacksWhenTooWide { get; set; }
+
     [Export("minimumHeight")]
     double MinimumHeight { get; set; }
 

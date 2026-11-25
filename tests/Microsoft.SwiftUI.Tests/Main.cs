@@ -1197,6 +1197,26 @@ var cases = new (string Name, Action Test)[]
         Assert(host is NSView);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("a row stacks its children when they do not fit, opt-in, only on an HStack, never with a set width", () =>
+    {
+        using var row = Views.HStack(Views.Button("Submit", () => { }), Views.Button("I was correct", () => { }));
+        Assert(!row.StacksWhenTooWide);
+        Assert(ReferenceEquals(row.WithStackingWhenTooWide(), row) && row.StacksWhenTooWide);
+        row.WithStackingWhenTooWide(false);
+        Assert(!row.StacksWhenTooWide);
+        row.WithStackingWhenTooWide();
+        // Stacking is measured, not fixed size: a child alone on its line can still wrap.
+        Assert(!row.FixedHorizontalSize && !row.Children[0].FixedHorizontalSize);
+        Throws<InvalidOperationException>(() => row.WithAdaptiveStack(430));
+        using var adaptive = Views.HStack(Views.Text("1/3")).WithAdaptiveStack(430);
+        Throws<InvalidOperationException>(() => adaptive.WithStackingWhenTooWide());
+        Assert(ReferenceEquals(adaptive.WithStackingWhenTooWide(false), adaptive));
+        using var column = Views.VStack(Views.Text("Not a row"));
+        Throws<InvalidOperationException>(() => column.WithStackingWhenTooWide());
+        using var host = SwiftUIHost.CreateView(row);
+        Assert(host is NSView);
+        SwiftUIHost.DetachView(row, host);
+    }),
     ("a menu's custom label keeps its own width, opt-in, only on a Menu with a label view", () =>
     {
         var icon = Views.Image("slider.horizontal.3");
