@@ -1258,7 +1258,7 @@ private struct CustomButtonAppearanceStyle: ButtonStyle {
         _ label: Label, _ configuration: Configuration, shape: S
     ) -> some View {
         label
-            .frame(minHeight: minimumHeight > 0 ? minimumHeight : nil)
+            .modifier(MinimumHeightFrame(minHeight: minimumHeight))
             .background {
                 if shadowOpacity > 0 {
                     shape.fill(.black)
@@ -2195,16 +2195,18 @@ struct SwiftUINodeView: View {
                 leading: node.paddingPoints + node.paddingLeft,
                 bottom: node.paddingPoints + node.paddingBottom,
                 trailing: node.paddingPoints + node.paddingRight))
-            .frame(minHeight: node.minimumHeight > 0 ? node.minimumHeight : nil)
+            .modifier(MinimumHeightFrame(minHeight: node.minimumHeight))
             .modifier(FixedWidthFrame(width: node.fixedWidth, alignment: horizontalAlignment))
-            .frame(maxWidth: node.fillsWidth
-                ? node.maxWidth > 0 ? node.maxWidth : .infinity : nil,
-                   maxHeight: node.fillsHeight ? .infinity : nil,
-                   alignment: horizontalAlignment)
+            .modifier(FillFrame(
+                maxWidth: node.fillsWidth
+                    ? node.maxWidth > 0 ? node.maxWidth : .infinity : nil,
+                maxHeight: node.fillsHeight ? .infinity : nil,
+                alignment: horizontalAlignment))
 
         return ignoringSafeArea(surface(padded)
-            .frame(maxWidth: node.fillsWidth && node.maxWidth > 0 ? .infinity : nil,
-                   alignment: horizontalAlignment)
+            .modifier(FillFrame(
+                maxWidth: node.fillsWidth && node.maxWidth > 0 ? .infinity : nil,
+                maxHeight: nil, alignment: horizontalAlignment))
             .opacity(node.opacity))
             .modifier(FixedSizing(horizontal: node.fixedHorizontalSize,
                                   vertical: node.fixedVerticalSize))
@@ -2359,12 +2361,14 @@ struct SwiftUINodeView: View {
         _ label: V, ellipticalShape: ButtonEllipticalCornerShape?
     ) -> some View {
         if let ellipticalShape {
-            label.frame(minHeight: node.minimumHeight > 0 ? node.minimumHeight : nil)
-                .frame(maxWidth: fillsButtonGroupWidth ? .infinity : nil)
+            label.modifier(MinimumHeightFrame(minHeight: node.minimumHeight))
+                .modifier(FillFrame(maxWidth: fillsButtonGroupWidth ? .infinity : nil,
+                                    maxHeight: nil, alignment: .center))
                 .contentShape(.interaction, ellipticalShape)
         } else {
-            label.frame(minHeight: node.minimumHeight > 0 ? node.minimumHeight : nil)
-                .frame(maxWidth: fillsButtonGroupWidth ? .infinity : nil)
+            label.modifier(MinimumHeightFrame(minHeight: node.minimumHeight))
+                .modifier(FillFrame(maxWidth: fillsButtonGroupWidth ? .infinity : nil,
+                                    maxHeight: nil, alignment: .center))
                 .contentShape(Rectangle())
         }
     }
@@ -3086,6 +3090,43 @@ struct ListRowBackgroundHidden: ViewModifier {
 /// Opt-in `frame(width:)`: the view is exactly this wide whatever its container proposes. No
 /// frame at all when off, so existing views keep their layout. A modifier keeps the node view's
 /// body type small.
+/// `frame(minHeight:)`, applied only when there is a minimum. A flexible frame that sets
+/// nothing in a dimension still takes its child's size there and offers the child exactly
+/// that size when it places it. An `HStack` measured in a wider offer and then placed in its
+/// own width divides that width in equal shares, least flexible child first, so a child whose
+/// text can wrap is given less than it measured although its neighbour leaves the rest unused
+/// (SentenceStudio issue 260: "Submit" wrapped a letter to a line beside a second button).
+/// Every node used to get such a frame; now a node without a minimum height gets none.
+struct MinimumHeightFrame: ViewModifier {
+    let minHeight: CGFloat
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if minHeight > 0 {
+            content.frame(minHeight: minHeight)
+        } else {
+            content
+        }
+    }
+}
+
+/// `frame(maxWidth:maxHeight:alignment:)`, applied only when one of them is set, for the
+/// reason given on `MinimumHeightFrame`.
+struct FillFrame: ViewModifier {
+    let maxWidth: CGFloat?
+    let maxHeight: CGFloat?
+    let alignment: Alignment
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if maxWidth != nil || maxHeight != nil {
+            content.frame(maxWidth: maxWidth, maxHeight: maxHeight, alignment: alignment)
+        } else {
+            content
+        }
+    }
+}
+
 struct FixedWidthFrame: ViewModifier {
     let width: Double
     let alignment: Alignment
