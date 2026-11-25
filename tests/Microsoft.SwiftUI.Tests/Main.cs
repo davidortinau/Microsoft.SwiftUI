@@ -1916,6 +1916,37 @@ var cases = new (string Name, Action Test)[]
         disposed.Dispose();
         Throws<ObjectDisposedException>(() => disposed.InvokeKeyboardOverlapChanged(10));
     }),
+    // SentenceStudio issue 260. Every node used to sit in a `frame(minHeight: nil)`. Such a frame
+    // takes its child's width and offers the child exactly that when placing it, and an HStack
+    // placed in its own width gives its least flexible child an equal share first: beside
+    // "I was correct", "Submit" got less than it measured and wrapped, with room left over.
+    ("a row keeps each child's own width when it has room, with and without a flexible width", () =>
+    {
+        const double hostWidth = 400, gap = 8;
+        SwiftView Block(string title, double side) =>
+            Views.Text(title).WithPadding(0, side, 0, side).WithBackgroundColor("#3366CC");
+        using var wide = Block("Submit", 48);
+        using var narrow = Block("I was correct", 16);
+        var apart = Painted(wide, hostWidth, 200).Width + gap + Painted(narrow, hostWidth, 200).Width;
+        Assert(apart < hostWidth - 40);
+        foreach (var flexible in new[] { false, true })
+        {
+            using var row = Views.HStack(Block("Submit", 48), Block("I was correct", 16));
+            row.Spacing = gap;
+            if (flexible)
+                row.WithFlexibleWidth(alignment: SwiftHorizontalAlignment.Center);
+            var together = Painted(row, hostWidth, 200).Width;
+            if (Math.Abs(together - apart) > 1)
+                throw new Exception($"The row (flexible width: {flexible}) is painted {together:0.#} points wide; its two children at their own widths, with the gap, take {apart:0.#}.");
+        }
+        // The frames that are now applied only when set still do what they did.
+        using var tall = Block("Tall", 8).WithMinimumHeight(60);
+        Assert(Math.Abs(Painted(tall, hostWidth, 200).Height - 60) <= 1);
+        using var filling = Block("Wide", 8).WithFlexibleWidth();
+        Assert(Math.Abs(Painted(filling, hostWidth, 200).Width - hostWidth) <= 1);
+        using var capped = Block("Capped", 8).WithFlexibleWidth(120, SwiftHorizontalAlignment.Center);
+        Assert(Math.Abs(Painted(capped, hostWidth, 200).Width - 120) <= 1);
+    }),
     ("explicit host teardown", () =>
     {
         var taps = 0;
@@ -1947,6 +1978,42 @@ foreach (var (name, test) in cases)
 }
 Console.WriteLine($"Managed tests: {cases.Length - failed}/{cases.Length} passed");
 return failed == 0 ? 0 : 1;
+
+// The bounding box, in points, of what a view paints in a host of the given size.
+static (double Width, double Height) Painted(SwiftView root, double width, double height)
+{
+    var host = SwiftUIHost.CreateView(root);
+    try
+    {
+        host.Frame = new CGRect(0, 0, width, height);
+        host.LayoutSubtreeIfNeeded();
+        var bitmap = host.BitmapImageRepForCachingDisplayInRect(host.Bounds)
+            ?? throw new Exception("The host has no bitmap to draw in.");
+        host.CacheDisplay(host.Bounds, bitmap);
+        if (!bitmap.HasAlpha || bitmap.IsPlanar || bitmap.BitsPerSample != 8)
+            throw new Exception("The host's bitmap is not 8-bit meshed pixels with alpha.");
+        var scale = bitmap.PixelsWide / width;
+        var samples = (int)bitmap.BitsPerPixel / 8;
+        var alpha = bitmap.BitmapFormat.HasFlag(NSBitmapFormat.AlphaFirst)
+            ? 0 : (int)bitmap.SamplesPerPixel - 1;
+        int left = int.MaxValue, right = -1, top = int.MaxValue, bottom = -1;
+        for (var y = 0; y < bitmap.PixelsHigh; y++)
+            for (var x = 0; x < bitmap.PixelsWide; x++)
+                if (System.Runtime.InteropServices.Marshal.ReadByte(bitmap.BitmapData,
+                        y * (int)bitmap.BytesPerRow + x * samples + alpha) != 0)
+                {
+                    left = Math.Min(left, x); right = Math.Max(right, x);
+                    top = Math.Min(top, y); bottom = Math.Max(bottom, y);
+                }
+        if (right < 0)
+            throw new Exception("The host painted nothing.");
+        return ((right - left + 1) / scale, (bottom - top + 1) / scale);
+    }
+    finally
+    {
+        SwiftUIHost.DetachView(root, host);
+    }
+}
 
 static SwiftView? Find(SwiftView view, string identifier)
 {
