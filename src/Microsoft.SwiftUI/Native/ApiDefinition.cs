@@ -423,6 +423,9 @@ interface MSUNode
     [Export("menuLabelFitsContent")]
     bool MenuLabelFitsContent { get; set; }
 
+    [Export("dynamicTypeSizeOverride")]
+    nint DynamicTypeSizeOverride { get; set; }
+
     [Export("scrollDismissesKeyboard")]
     string ScrollDismissesKeyboard { get; set; }
 
