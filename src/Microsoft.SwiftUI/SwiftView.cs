@@ -1794,6 +1794,36 @@ public sealed class SwiftView : IDisposable
         }
     }
 
+    /// <summary>
+    /// Draws this view and everything under it at one Dynamic Type size, whatever the system's
+    /// is (SwiftUI <c>dynamicTypeSize(_:)</c>): a preview or a test of a layout at the largest
+    /// accessibility size, or a subtree held at one size. On iOS the system scales every font
+    /// relative to a text style below it. On macOS SwiftUI scales nothing for it, so there the
+    /// bridge multiplies the text below by Apple's Body size for <paramref name="size"/> over
+    /// 17 (53 over 17 at <see cref="SwiftDynamicTypeSize.Accessibility5"/>), which is what a
+    /// font relative to Body gets on iOS; controls the system draws at its own size (a switch,
+    /// a spinner) stay as they are. <c>null</c> follows the system again. Off by default.
+    /// </summary>
+    public SwiftView WithDynamicTypeSize(SwiftDynamicTypeSize? size)
+    {
+        RequireActive();
+        if (size is { } given && !Enum.IsDefined(given))
+            throw new ArgumentOutOfRangeException(nameof(size), size, "Not a Dynamic Type size.");
+        _native.DynamicTypeSizeOverride = size is { } value ? (int)value : -1;
+        return this;
+    }
+
+    /// <summary>The size <see cref="WithDynamicTypeSize"/> draws this view at, or <c>null</c> for the system's.</summary>
+    public SwiftDynamicTypeSize? DynamicTypeSize
+    {
+        get
+        {
+            RequireActive();
+            var value = (int)_native.DynamicTypeSizeOverride;
+            return value >= 0 && Enum.IsDefined((SwiftDynamicTypeSize)value) ? (SwiftDynamicTypeSize)value : null;
+        }
+    }
+
     /// <summary>Whether <see cref="WithLabelsHidden"/> hides this Toggle's label.</summary>
     public bool LabelsHidden
     {

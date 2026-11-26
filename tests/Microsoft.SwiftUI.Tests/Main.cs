@@ -1238,6 +1238,36 @@ var cases = new (string Name, Action Test)[]
         Assert(host is NSView);
         SwiftUIHost.DetachView(row, host);
     }),
+    ("a view and what is under it can be drawn at one Dynamic Type size, opt-in", () =>
+    {
+        using var text = Views.Text("Retry");
+        Assert(text.DynamicTypeSize is null);
+        Assert(ReferenceEquals(text.WithDynamicTypeSize(SwiftDynamicTypeSize.Accessibility5), text));
+        Assert(text.DynamicTypeSize == SwiftDynamicTypeSize.Accessibility5);
+        text.WithDynamicTypeSize(SwiftDynamicTypeSize.XSmall);
+        Assert(text.DynamicTypeSize == SwiftDynamicTypeSize.XSmall);
+        text.WithDynamicTypeSize(null);
+        Assert(text.DynamicTypeSize is null);
+        Throws<ArgumentOutOfRangeException>(() => text.WithDynamicTypeSize((SwiftDynamicTypeSize)12));
+        Throws<ArgumentOutOfRangeException>(() => text.WithDynamicTypeSize((SwiftDynamicTypeSize)(-1)));
+        Assert(text.DynamicTypeSize is null);
+
+        // Drawn: a row of sized text under the override is Body's ratio as wide (53 over 17).
+        static double Width(SwiftView view)
+        {
+            var host = SwiftUIHost.CreateView(view);
+            host.LayoutSubtreeIfNeeded();
+            var width = (double)host.FittingSize.Width;
+            SwiftUIHost.DetachView(view, host);
+            host.Dispose();
+            return width;
+        }
+        using var plain = Views.HStack(Views.Text("Completed 11/25/2026").WithTypography(15, 400, 1.2, "Helvetica"));
+        using var large = Views.HStack(Views.Text("Completed 11/25/2026").WithTypography(15, 400, 1.2, "Helvetica"))
+            .WithDynamicTypeSize(SwiftDynamicTypeSize.Accessibility5);
+        var ratio = Width(large) / Width(plain);
+        Assert(Math.Abs(ratio - 53.0 / 17) < 0.12);
+    }),
     ("a view can keep its ideal size, opt-in, never on a flexible axis", () =>
     {
         using var badge = Views.Text("Failed");

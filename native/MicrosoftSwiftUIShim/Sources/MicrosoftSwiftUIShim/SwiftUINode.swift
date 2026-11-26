@@ -268,6 +268,12 @@ public final class MSUNode: NSObject, ObservableObject {
     /// and the neighbour keeps the room. Off by default, so existing menus keep a label
     /// that fills its row and is tappable across it.
     @objc public var menuLabelFitsContent = false { willSet { objectWillChange.send() } }
+    /// The Dynamic Type size this node and everything under it are drawn at, whatever the
+    /// system's is (SwiftUI `dynamicTypeSize(_:)`): 0 (xSmall) to 11 (accessibility5), or -1
+    /// for the system's size. On macOS SwiftUI keeps the value in the environment and scales
+    /// nothing, so there the bridge multiplies text by Apple's Body size for it over 17
+    /// (`DynamicTypeOverride`). -1 by default, so existing nodes follow the system.
+    @objc public var dynamicTypeSizeOverride = -1 { willSet { objectWillChange.send() } }
     /// How dragging a scroll node dismisses the software keyboard (SwiftUI
     /// `scrollDismissesKeyboard`): "" keeps the system's automatic behavior, or "immediately",
     /// "interactively" or "never".
@@ -936,18 +942,74 @@ private func msuAdaptiveColor(_ light: String, _ dark: String,
     msuColor(scheme == .dark && !dark.isEmpty ? dark : light)
 }
 
+/// Apple's Body point size on iOS for each Dynamic Type size, xSmall to accessibility5 (HIG
+/// Typography, "Dynamic Type sizes"). A font relative to Body is scaled by its size over 17.
+let msuBodyPointSizes: [CGFloat] = [14, 15, 16, 17, 19, 21, 23, 28, 33, 40, 47, 53]
+
+/// The SwiftUI size for a node's `dynamicTypeSizeOverride`, or nil for the system's (-1 or
+/// anything out of range).
+func msuDynamicTypeSize(_ index: Int) -> DynamicTypeSize? {
+    let sizes: [DynamicTypeSize] = [.xSmall, .small, .medium, .large, .xLarge, .xxLarge, .xxxLarge,
+                                    .accessibility1, .accessibility2, .accessibility3,
+                                    .accessibility4, .accessibility5]
+    return sizes.indices.contains(index) ? sizes[index] : nil
+}
+
+/// What a node multiplies a font the system does not scale by. `system` is the node's own
+/// `@ScaledMetric` of 1 relative to Body (always 1 on macOS), `inherited` is what an ancestor's
+/// override set on macOS (1 elsewhere), and a node's own override stands for both: the scaled
+/// metric is read outside the node's own modifiers, so it does not see the node's own size.
+func msuTextScale(system: CGFloat, inherited: CGFloat, override: Int) -> CGFloat {
+    msuBodyPointSizes.indices.contains(override)
+        ? msuBodyPointSizes[override] / 17 : system * inherited
+}
+
+private struct BodyTextScaleKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 1
+}
+
+extension EnvironmentValues {
+    /// macOS only: Body's size over 17 for the nearest `dynamicTypeSizeOverride` above, 1
+    /// without one. Never set on iOS, where the system scales text itself.
+    var msuBodyTextScale: CGFloat {
+        get { self[BodyTextScaleKey.self] }
+        set { self[BodyTextScaleKey.self] = newValue }
+    }
+}
+
+/// A text style's font. Under an overridden Dynamic Type size on macOS, where the system does
+/// not scale a text style, it is the style's own font at its size times the scale.
+private func msuTextStyleFont(_ style: Font.TextStyle, scale: CGFloat) -> Font {
+    #if os(macOS)
+    if scale != 1 {
+        let native: NSFont.TextStyle = switch style {
+        case .largeTitle: .largeTitle
+        case .title: .title1
+        case .title2: .title2
+        case .headline: .headline
+        case .subheadline: .subheadline
+        case .caption: .caption1
+        default: .body
+        }
+        let font = NSFont.preferredFont(forTextStyle: native)
+        return Font(font.withSize(font.pointSize * scale) as CTFont)
+    }
+    #endif
+    return Font.system(style)
+}
+
 private func msuFont(_ node: MSUNode, bodyFontScale: CGFloat) -> Font? {
     guard node.fontSize > 0 else {
         switch node.fontStyle {
-        case "largeTitle": return .largeTitle
-        case "title": return .title
-        case "title2": return .title2
-        case "headline": return .headline
-        case "subheadline": return .subheadline
-        case "caption": return .caption
-        case "body": return .body
+        case "largeTitle": return msuTextStyleFont(.largeTitle, scale: bodyFontScale)
+        case "title": return msuTextStyleFont(.title, scale: bodyFontScale)
+        case "title2": return msuTextStyleFont(.title2, scale: bodyFontScale)
+        case "headline": return msuTextStyleFont(.headline, scale: bodyFontScale)
+        case "subheadline": return msuTextStyleFont(.subheadline, scale: bodyFontScale)
+        case "caption": return msuTextStyleFont(.caption, scale: bodyFontScale)
+        case "body": return msuTextStyleFont(.body, scale: bodyFontScale)
         case "": return nil
-        default: return .body
+        default: return msuTextStyleFont(.body, scale: bodyFontScale)
         }
     }
     let weight: Font.Weight = switch node.fontWeight {
@@ -965,7 +1027,14 @@ private func msuFont(_ node: MSUNode, bodyFontScale: CGFloat) -> Font? {
     if node.fontPostScriptName.isEmpty {
         return .system(size: size * bodyFontScale, weight: weight)
     }
-    return .custom(node.fontPostScriptName, size: size, relativeTo: .body)
+    // iOS scales a font relative to Body itself. macOS does not (its scale is 1 unless a
+    // Dynamic Type size is overridden above this node), so there the size carries the scale.
+    #if os(macOS)
+    let relativeSize = size * bodyFontScale
+    #else
+    let relativeSize = size
+    #endif
+    return .custom(node.fontPostScriptName, size: relativeSize, relativeTo: .body)
         .weight(weight)
 }
 
@@ -2034,7 +2103,10 @@ struct InlineTextNodeView: View {
     @ObservedObject var leading: MSUNode
     @ObservedObject var trailing: MSUNode
     @Environment(\.colorScheme) private var colorScheme
-    @ScaledMetric(relativeTo: .body) private var bodyFontScale: CGFloat = 1
+    @Environment(\.msuBodyTextScale) private var inheritedTextScale
+    @ScaledMetric(relativeTo: .body) private var systemFontScale: CGFloat = 1
+
+    private var bodyFontScale: CGFloat { systemFontScale * inheritedTextScale }
 
     private static func run(_ node: MSUNode, colorScheme: ColorScheme,
                             bodyFontScale: CGFloat) -> AttributedString {
@@ -2081,7 +2153,13 @@ struct SwiftUINodeView: View {
     @Environment(\.msuInSplitColumn) private var inSplitColumn
     @Environment(\.fillsMSUButtonGroupWidth) private var fillsButtonGroupWidth
     @Environment(\.msuScrollTargetsEnabled) private var scrollTargetsEnabled
-    @ScaledMetric(relativeTo: .body) private var bodyFontScale: CGFloat = 1
+    @Environment(\.msuBodyTextScale) private var inheritedTextScale
+    @ScaledMetric(relativeTo: .body) private var systemFontScale: CGFloat = 1
+
+    private var bodyFontScale: CGFloat {
+        msuTextScale(system: systemFontScale, inherited: inheritedTextScale,
+                     override: node.dynamicTypeSizeOverride)
+    }
 
     private var textContent: Text {
         msuSpeechText(node.text, language: node.speechLanguage).underline(node.isUnderlined)
@@ -2220,6 +2298,7 @@ struct SwiftUINodeView: View {
             .modifier(FixedSizing(horizontal: node.fixedHorizontalSize,
                                   vertical: node.fixedVerticalSize))
             .modifier(ListRowBackgroundHidden(hidden: node.listRowBackgroundHidden))
+            .modifier(DynamicTypeOverride(index: node.dynamicTypeSizeOverride))
     }
 
     @ViewBuilder
@@ -3136,6 +3215,34 @@ struct FittingStackLayout: Layout {
         for subview in subviews {
             subview.place(at: CGPoint(x: bounds.midX, y: y), anchor: .top, proposal: offered)
             y += subview.sizeThatFits(offered).height + spacing
+        }
+    }
+}
+
+/// Opt-in `dynamicTypeSize(_:)`: the node and everything under it are drawn at one Dynamic Type
+/// size, whatever the system's is. On iOS that is the whole of it: the system scales every font
+/// relative to a text style and every scaled metric below. On macOS SwiftUI keeps the size in
+/// the environment (an adaptive stack and the viewport report read it) and scales nothing, so
+/// the bridge does there what iOS does for text: Body's size for it over 17 goes down the
+/// environment for the nodes' sized fonts and text styles, and text and symbols without a font
+/// of their own take Body at that scale. Controls the system draws at a size of its own (a
+/// switch, a spinner) are not scaled. Nothing is applied without an override.
+struct DynamicTypeOverride: ViewModifier {
+    let index: Int
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let size = msuDynamicTypeSize(index) {
+            #if os(macOS)
+            content
+                .font(msuTextStyleFont(.body, scale: msuBodyPointSizes[index] / 17))
+                .dynamicTypeSize(size)
+                .environment(\.msuBodyTextScale, msuBodyPointSizes[index] / 17)
+            #else
+            content.dynamicTypeSize(size)
+            #endif
+        } else {
+            content
         }
     }
 }
