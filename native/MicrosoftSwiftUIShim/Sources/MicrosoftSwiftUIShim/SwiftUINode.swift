@@ -231,6 +231,10 @@ public final class MSUNode: NSObject, ObservableObject {
     @objc public var accessibilityAnnouncement = "" { willSet { objectWillChange.send() } }
     @objc public var horizontalAlignment = "leading" { willSet { objectWillChange.send() } }
     @objc public var adaptiveStackBelowWidth = 0.0 { willSet { objectWillChange.send() } }
+    /// An HStack lays its children out in a column when, each at its own width, they do not
+    /// fit the width the row is offered; otherwise in a row, as before. Off by default, so
+    /// existing rows squeeze and wrap their children as SwiftUI's HStack does.
+    @objc public var stacksWhenTooWide = false { willSet { objectWillChange.send() } }
     @objc public var minimumHeight = 0.0 { willSet { objectWillChange.send() } }
     @objc public var gridColumns = 2 { willSet { objectWillChange.send() } }
     @objc public var gridColumnMinimumWidths: [NSNumber] = [] { willSet { objectWillChange.send() } }
@@ -2553,6 +2557,10 @@ struct SwiftUINodeView: View {
             return erased {
                 if node.adaptiveStackBelowWidth > 0 {
                     AdaptiveStackNodeView(node: node)
+                } else if node.stacksWhenTooWide {
+                    FittingStackLayout(spacing: node.spacing) {
+                        ForEach(node.children, id: \.id) { SwiftUINodeView(node: $0) }
+                    }
                 } else {
                     HStack(spacing: node.spacing) {
                         ForEach(node.children, id: \.id) { SwiftUINodeView(node: $0) }
@@ -3071,6 +3079,63 @@ struct FixedSizing: ViewModifier {
             content.fixedSize(horizontal: horizontal, vertical: vertical)
         } else {
             content
+        }
+    }
+}
+
+/// A row that becomes a column when it is too wide (0.1.0-preview.69). The children are
+/// measured at their own (ideal) sizes: when those and the gaps fit the width offered, they
+/// are placed in a row at those sizes, centered vertically, exactly as wide as they need. When
+/// they do not, each child is offered the whole width and they are placed one under another,
+/// centered, with the same gap. Nothing is squeezed first, so a label wraps only when it
+/// does not fit a line of its own. With no width offered (an ideal-size query) it is a row.
+struct FittingStackLayout: Layout {
+    var spacing: CGFloat
+
+    private func gaps(_ count: Int) -> CGFloat { spacing * CGFloat(max(count - 1, 0)) }
+
+    private func ideals(_ subviews: Subviews) -> [CGSize] {
+        subviews.map { $0.sizeThatFits(.unspecified) }
+    }
+
+    private func rowWidth(_ sizes: [CGSize]) -> CGFloat {
+        sizes.reduce(0) { $0 + $1.width } + gaps(sizes.count)
+    }
+
+    private func fitsInARow(_ sizes: [CGSize], offered: CGFloat?) -> Bool {
+        guard let offered, offered.isFinite else { return true }
+        return rowWidth(sizes) <= offered + 0.5
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let own = ideals(subviews)
+        if fitsInARow(own, offered: proposal.width) {
+            return CGSize(width: rowWidth(own), height: own.map(\.height).max() ?? 0)
+        }
+        let column = subviews.map {
+            $0.sizeThatFits(ProposedViewSize(width: proposal.width, height: nil))
+        }
+        return CGSize(width: column.map(\.width).max() ?? 0,
+                      height: column.reduce(0) { $0 + $1.height } + gaps(column.count))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews,
+                       cache: inout ()) {
+        let own = ideals(subviews)
+        if fitsInARow(own, offered: proposal.width) {
+            var x = bounds.minX
+            for (subview, size) in zip(subviews, own) {
+                subview.place(at: CGPoint(x: x, y: bounds.midY), anchor: .leading,
+                              proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            return
+        }
+        let offered = ProposedViewSize(width: proposal.width, height: nil)
+        var y = bounds.minY
+        for subview in subviews {
+            subview.place(at: CGPoint(x: bounds.midX, y: y), anchor: .top, proposal: offered)
+            y += subview.sizeThatFits(offered).height + spacing
         }
     }
 }

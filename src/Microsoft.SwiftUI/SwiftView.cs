@@ -1640,8 +1640,39 @@ public sealed class SwiftView : IDisposable
         RequireKind("hstack");
         if (!double.IsFinite(verticalBelowWidth) || verticalBelowWidth <= 0)
             throw new ArgumentOutOfRangeException(nameof(verticalBelowWidth));
+        if (_native.StacksWhenTooWide)
+            throw new InvalidOperationException(
+                "A row that stacks when too wide cannot also stack below a set width.");
         _native.AdaptiveStackBelowWidth = verticalBelowWidth;
         return this;
+    }
+
+    /// <summary>
+    /// An HStack lays its children out in a column when, each at its own width, they do not
+    /// fit the width the row is offered, and in a row when they do. In the row each child
+    /// keeps its own width; in the column each is offered the whole width, centered, with
+    /// the row's spacing between them. Unlike <see cref="WithAdaptiveStack"/> the row is
+    /// measured, so it follows the text size and the language without a width to guess.
+    /// Off by default: an HStack squeezes and wraps its children.
+    /// </summary>
+    public SwiftView WithStackingWhenTooWide(bool stacks = true)
+    {
+        RequireKind("hstack");
+        if (stacks && _native.AdaptiveStackBelowWidth > 0)
+            throw new InvalidOperationException(
+                "A row that stacks below a set width cannot also stack when too wide.");
+        _native.StacksWhenTooWide = stacks;
+        return this;
+    }
+
+    /// <summary>Whether <see cref="WithStackingWhenTooWide"/> stacks this row's children when they do not fit.</summary>
+    public bool StacksWhenTooWide
+    {
+        get
+        {
+            RequireActive();
+            return _native.StacksWhenTooWide;
+        }
     }
 
     public SwiftView WithCenterWhenShort(bool enabled = true)
