@@ -417,6 +417,9 @@ interface MSUNode
     [Export("listRowBackgroundHidden")]
     bool ListRowBackgroundHidden { get; set; }
 
+    [Export("menuLabelFitsContent")]
+    bool MenuLabelFitsContent { get; set; }
+
     [Export("scrollDismissesKeyboard")]
     string ScrollDismissesKeyboard { get; set; }
 

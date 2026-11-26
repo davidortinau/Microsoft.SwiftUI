@@ -1197,6 +1197,27 @@ var cases = new (string Name, Action Test)[]
         Assert(host is NSView);
         SwiftUIHost.DetachView(root, host);
     }),
+    ("a menu's custom label keeps its own width, opt-in, only on a Menu with a label view", () =>
+    {
+        var icon = Views.Image("slider.horizontal.3");
+        using var menu = Views.Menu(icon, Views.Button("Slower", () => { }));
+        Assert(!menu.MenuLabelFitsContent);
+        Assert(ReferenceEquals(menu.WithMenuLabelFittingContent(), menu) && menu.MenuLabelFitsContent);
+        menu.WithMenuLabelFittingContent(false);
+        Assert(!menu.MenuLabelFitsContent);
+        menu.WithMenuLabelFittingContent();
+        // Fitting the label is not fixed size: the menu can still shrink in a narrow row.
+        Assert(!menu.FixedHorizontalSize && !menu.FixedVerticalSize);
+        using var titled = Views.Menu("More", Views.Button("Existing", () => { }));
+        Assert(!titled.MenuLabelFitsContent);
+        Throws<InvalidOperationException>(() => titled.WithMenuLabelFittingContent());
+        using var text = Views.Text("Not a menu");
+        Throws<InvalidOperationException>(() => text.WithMenuLabelFittingContent());
+        using var row = Views.HStack(Views.Text("Listening").WithFlexibleWidth(), menu);
+        using var host = SwiftUIHost.CreateView(row);
+        Assert(host is NSView);
+        SwiftUIHost.DetachView(row, host);
+    }),
     ("a view can keep its ideal size, opt-in, never on a flexible axis", () =>
     {
         using var badge = Views.Text("Failed");

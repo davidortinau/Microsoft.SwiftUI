@@ -1736,6 +1736,33 @@ public sealed class SwiftView : IDisposable
         }
     }
 
+    /// <summary>
+    /// A Menu with a custom label draws that label at its own width instead of filling the
+    /// width the menu is offered, so an icon-only menu beside flexible content stays
+    /// icon-sized and the neighbour keeps the room. Unlike <see cref="WithFixedSize"/> the
+    /// label can still shrink or wrap when the row is too narrow. Only for a Menu made with
+    /// a label view. Off by default: a menu's label fills its row.
+    /// </summary>
+    public SwiftView WithMenuLabelFittingContent(bool fits = true)
+    {
+        RequireActive();
+        if (Kind != "menu" || Children.Count == 0 || Children[0].Kind == "button")
+            throw new InvalidOperationException(
+                "WithMenuLabelFittingContent applies to a Menu made with a label view.");
+        _native.MenuLabelFitsContent = fits;
+        return this;
+    }
+
+    /// <summary>Whether <see cref="WithMenuLabelFittingContent"/> keeps this menu's label at its own width.</summary>
+    public bool MenuLabelFitsContent
+    {
+        get
+        {
+            RequireActive();
+            return _native.MenuLabelFitsContent;
+        }
+    }
+
     /// <summary>Whether <see cref="WithLabelsHidden"/> hides this Toggle's label.</summary>
     public bool LabelsHidden
     {
