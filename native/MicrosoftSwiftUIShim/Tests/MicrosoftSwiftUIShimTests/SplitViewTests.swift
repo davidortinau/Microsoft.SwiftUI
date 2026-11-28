@@ -83,6 +83,6 @@ final class SplitViewTests: XCTestCase {
         tabs.insertChild(tab, at: 0)
         tabs.tabViewStyle = "tabBarOnly"
         XCTAssertTrue(tabs.usesAdaptiveTabs)
-        buildHosted(tabs)
+        buildHostedInWindow(tabs)
     }
 }

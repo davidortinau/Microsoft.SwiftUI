@@ -23,7 +23,7 @@ final class AdaptiveTabsTests: XCTestCase {
         XCTAssertFalse(study.hasTabHiddenState)
         XCTAssertEqual(tabs.tabViewStyle, "")
         XCTAssertFalse(tabs.usesAdaptiveTabs)
-        buildHosted(tabs)
+        buildHostedInWindow(tabs)
     }
 
     @MainActor
@@ -34,7 +34,7 @@ final class AdaptiveTabsTests: XCTestCase {
         roleTabs.insertChild(tab("Study", "graduationcap"), at: 0)
         roleTabs.insertChild(sam, at: 1)
         XCTAssertTrue(roleTabs.usesAdaptiveTabs)
-        buildHosted(roleTabs)
+        buildHostedInWindow(roleTabs)
 
         let hiddenTabs = MSUBridge.makeNode(kind: "tabView")
         let hidden = tab("Sam", "bubble.left.and.bubble.right.fill")
@@ -47,7 +47,7 @@ final class AdaptiveTabsTests: XCTestCase {
         styled.insertChild(tab("Study", "graduationcap"), at: 0)
         styled.tabViewStyle = "sidebarAdaptable"
         XCTAssertTrue(styled.usesAdaptiveTabs)
-        buildHosted(styled)
+        buildHostedInWindow(styled)
     }
 
     @MainActor
