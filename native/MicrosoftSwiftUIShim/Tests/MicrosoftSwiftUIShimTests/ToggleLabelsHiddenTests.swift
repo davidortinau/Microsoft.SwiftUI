@@ -15,9 +15,9 @@ final class ToggleLabelsHiddenTests: XCTestCase {
         let observation = toggle.objectWillChange.sink { changes += 1 }
         toggle.labelsHidden = true
         XCTAssertTrue(toggle.labelsHidden)
-        _ = SwiftUINodeView(node: toggle).body
+        buildHosted(toggle)
         toggle.labelsHidden = false
-        _ = SwiftUINodeView(node: toggle).body
+        buildHosted(toggle)
         XCTAssertEqual(changes, 2)
         XCTAssertEqual(toggle.text, "Pause monitoring")
         observation.cancel()

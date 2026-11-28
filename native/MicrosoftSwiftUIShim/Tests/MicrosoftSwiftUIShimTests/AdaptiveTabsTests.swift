@@ -23,7 +23,7 @@ final class AdaptiveTabsTests: XCTestCase {
         XCTAssertFalse(study.hasTabHiddenState)
         XCTAssertEqual(tabs.tabViewStyle, "")
         XCTAssertFalse(tabs.usesAdaptiveTabs)
-        _ = SwiftUINodeView(node: tabs).body
+        buildHosted(tabs)
     }
 
     @MainActor
@@ -34,7 +34,7 @@ final class AdaptiveTabsTests: XCTestCase {
         roleTabs.insertChild(tab("Study", "graduationcap"), at: 0)
         roleTabs.insertChild(sam, at: 1)
         XCTAssertTrue(roleTabs.usesAdaptiveTabs)
-        _ = SwiftUINodeView(node: roleTabs).body
+        buildHosted(roleTabs)
 
         let hiddenTabs = MSUBridge.makeNode(kind: "tabView")
         let hidden = tab("Sam", "bubble.left.and.bubble.right.fill")
@@ -47,7 +47,7 @@ final class AdaptiveTabsTests: XCTestCase {
         styled.insertChild(tab("Study", "graduationcap"), at: 0)
         styled.tabViewStyle = "sidebarAdaptable"
         XCTAssertTrue(styled.usesAdaptiveTabs)
-        _ = SwiftUINodeView(node: styled).body
+        buildHosted(styled)
     }
 
     @MainActor

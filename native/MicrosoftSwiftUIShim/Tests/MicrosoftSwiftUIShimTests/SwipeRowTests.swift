@@ -20,12 +20,12 @@ final class SwipeRowTests: XCTestCase {
         row.insertChild(study, at: 2)
         row.swipeLeadingCount = 1
         list.insertChild(row, at: 0)
-        _ = SwiftUINodeView(node: list).body
-        _ = SwiftUINodeView(node: row).body
-        _ = SwiftUINodeView(node: delete).body
+        buildHosted(list)
+        buildHosted(row)
+        buildHosted(delete)
         XCTAssertEqual(delete.buttonRole, "destructive")
         // A leading count past the actions is clamped when rendering.
         row.swipeLeadingCount = 9
-        _ = SwiftUINodeView(node: row).body
+        buildHosted(row)
     }
 }

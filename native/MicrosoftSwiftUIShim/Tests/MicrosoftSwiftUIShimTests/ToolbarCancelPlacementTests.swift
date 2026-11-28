@@ -14,11 +14,11 @@ final class ToolbarCancelPlacementTests: XCTestCase {
         let save = MSUBridge.makeNode(kind: "button")
         save.text = "Import"
         toolbar.insertChild(save, at: 2)
-        _ = SwiftUINodeView(node: toolbar).body
+        buildHosted(toolbar)
         // The node order is kept: a toolbar's buttons are updated in place by index.
         XCTAssertEqual(toolbar.children.map(\.text), ["", "Cancel", "Import"])
         // Without a Cancel-role button the toolbar renders as before.
         cancel.buttonRole = ""
-        _ = SwiftUINodeView(node: toolbar).body
+        buildHosted(toolbar)
     }
 }

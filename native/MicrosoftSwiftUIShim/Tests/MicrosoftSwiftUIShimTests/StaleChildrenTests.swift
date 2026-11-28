@@ -24,12 +24,12 @@ final class StaleChildrenTests: XCTestCase {
             option.text = "Option \(index)"
             picker.insertChild(option, at: index)
         }
-        _ = SwiftUINodeView(node: picker).body
+        buildHosted(picker)
         picker.removeChild(at: 2)
         picker.removeChild(at: 1)
-        _ = SwiftUINodeView(node: picker).body
+        buildHosted(picker)
         let tabs = MSUBridge.makeNode(kind: "tabView")
         tabs.insertChild(MSUBridge.makeNode(kind: "tab"), at: 0)
-        _ = SwiftUINodeView(node: tabs).body
+        buildHosted(tabs)
     }
 }

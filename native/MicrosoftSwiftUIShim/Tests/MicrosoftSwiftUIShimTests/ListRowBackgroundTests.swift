@@ -13,8 +13,8 @@ final class ListRowBackgroundTests: XCTestCase {
         header.listRowBackgroundHidden = true
         section.insertChild(header, at: 0)
         form.insertChild(section, at: 0)
-        _ = SwiftUINodeView(node: form).body
-        _ = SwiftUINodeView(node: header).body
+        buildHosted(form)
+        buildHosted(header)
         XCTAssertTrue(header.listRowBackgroundHidden)
     }
 }

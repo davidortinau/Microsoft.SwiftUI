@@ -24,7 +24,7 @@ final class DynamicTypeOverrideTests: XCTestCase {
         var changes = 0
         let observation = node.objectWillChange.sink { changes += 1 }
         node.dynamicTypeSizeOverride = 11
-        _ = SwiftUINodeView(node: node).body
+        buildHosted(node)
         XCTAssertEqual(changes, 1)
         observation.cancel()
     }

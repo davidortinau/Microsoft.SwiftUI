@@ -16,7 +16,7 @@ final class ScrollKeyboardDismissalTests: XCTestCase {
         for mode in ["interactively", "immediately", "never", ""] {
             scroll.scrollDismissesKeyboard = mode
             XCTAssertEqual(scroll.scrollDismissesKeyboard, mode)
-            _ = SwiftUINodeView(node: scroll).body
+            buildHosted(scroll)
         }
         XCTAssertEqual(changes, 4)
         observation.cancel()

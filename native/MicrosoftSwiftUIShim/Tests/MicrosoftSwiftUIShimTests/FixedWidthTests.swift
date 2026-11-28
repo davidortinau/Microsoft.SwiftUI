@@ -13,7 +13,7 @@ final class FixedWidthTests: XCTestCase {
         var changes = 0
         let observation = node.objectWillChange.sink { changes += 1 }
         node.fixedWidth = 240
-        _ = SwiftUINodeView(node: node).body
+        buildHosted(node)
         XCTAssertEqual(changes, 1)
         observation.cancel()
     }

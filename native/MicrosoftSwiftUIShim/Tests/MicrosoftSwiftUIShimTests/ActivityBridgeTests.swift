@@ -13,13 +13,13 @@ final class ActivityBridgeTests: XCTestCase {
         let word = MSUBridge.makeNode(kind: "text")
         word.text = "학교"
         XCTAssertEqual(word.speechLanguage, "")
-        _ = SwiftUINodeView(node: word).body
+        buildHosted(word)
 
         var changes = 0
         let observation = word.objectWillChange.sink { changes += 1 }
         word.speechLanguage = "ko-KR"
         XCTAssertEqual(changes, 1)
-        _ = SwiftUINodeView(node: word).body
+        buildHosted(word)
         observation.cancel()
 
         let attributed = msuSpeechAttributedString("학교", language: "ko-KR")
@@ -35,7 +35,7 @@ final class ActivityBridgeTests: XCTestCase {
         let button = MSUBridge.makeNode(kind: "button")
         button.accessibilityLabelText = "학교, In your vocab"
         button.speechLanguage = "ko-KR"
-        _ = SwiftUINodeView(node: button).body
+        buildHosted(button)
     }
 
     @MainActor
@@ -44,7 +44,7 @@ final class ActivityBridgeTests: XCTestCase {
         var taps = 0
         var doubleTaps = 0
         button.setTapHandler { taps += 1 }
-        _ = SwiftUINodeView(node: button).body
+        buildHosted(button)
         XCTAssertNil(button.doubleTapHandler)
 
         var changes = 0
@@ -52,7 +52,7 @@ final class ActivityBridgeTests: XCTestCase {
         button.setDoubleTapHandler { doubleTaps += 1 }
         XCTAssertEqual(changes, 1, "Attaching the gesture must re-render the node.")
         button.doubleTapActionName = "Play from here"
-        _ = SwiftUINodeView(node: button).body
+        buildHosted(button)
         observation.cancel()
 
         button.invokeDoubleTap()
@@ -76,7 +76,7 @@ final class ActivityBridgeTests: XCTestCase {
         scroll.insertChild(target, at: 0)
         XCTAssertFalse(scroll.scrollTargetsEnabled)
         XCTAssertEqual(scroll.scrollRequest, 0)
-        _ = SwiftUINodeView(node: scroll).body
+        buildHosted(scroll)
 
         var changes = 0
         let observation = scroll.objectWillChange.sink { changes += 1 }
@@ -90,12 +90,12 @@ final class ActivityBridgeTests: XCTestCase {
         XCTAssertFalse(scroll.scrollTargetAnimated)
         XCTAssertGreaterThanOrEqual(changes, 2)
         observation.cancel()
-        _ = SwiftUINodeView(node: scroll).body
+        buildHosted(scroll)
         XCTAssertEqual(scroll.children.map(\.id), [target.id])
 
         let list = MSUBridge.makeNode(kind: "list")
         list.requestScroll(to: "row.1", anchor: "bottom", animated: true)
-        _ = SwiftUINodeView(node: list).body
+        buildHosted(list)
         XCTAssertEqual(msuScrollAnchor("top"), .top)
         XCTAssertEqual(msuScrollAnchor("bottom"), .bottom)
         XCTAssertEqual(msuScrollAnchor("center"), .center)
@@ -111,7 +111,7 @@ final class ActivityBridgeTests: XCTestCase {
         picker.setPhotoPickedHandler { picked.append(($0, $1, $2)) }
         picker.setPhotoPickErrorHandler { errors.append($0) }
         picker.setPhotoPickCancelledHandler { cancelled += 1 }
-        _ = SwiftUINodeView(node: picker).body
+        buildHosted(picker)
 
         let bytes = Data([0xFF, 0xD8, 0xFF, 0xE0])
         picker.completePhotoPick(data: bytes, type: .jpeg)
@@ -176,10 +176,10 @@ final class ActivityBridgeTests: XCTestCase {
     @MainActor
     func testYouTubePlayerNodeRendersOnlyWithAValidId() {
         let player = MSUBridge.makeNode(kind: "youTubePlayer")
-        _ = SwiftUINodeView(node: player).body
+        buildHosted(player)
         player.videoId = "dQw4w9WgXcQ"
         player.accessibilityLabelText = "Lesson video"
-        _ = SwiftUINodeView(node: player).body
+        buildHosted(player)
         XCTAssertEqual(player.videoId, "dQw4w9WgXcQ")
         let coordinator = MSUYouTubeCoordinator()
         XCTAssertEqual(coordinator.videoId, "")

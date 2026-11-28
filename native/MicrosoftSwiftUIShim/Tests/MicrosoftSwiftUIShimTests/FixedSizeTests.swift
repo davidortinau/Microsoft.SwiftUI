@@ -15,9 +15,9 @@ final class FixedSizeTests: XCTestCase {
         var changes = 0
         let observation = node.objectWillChange.sink { changes += 1 }
         node.fixedHorizontalSize = true
-        _ = SwiftUINodeView(node: node).body
+        buildHosted(node)
         node.fixedVerticalSize = true
-        _ = SwiftUINodeView(node: node).body
+        buildHosted(node)
         XCTAssertEqual(changes, 2)
         observation.cancel()
     }

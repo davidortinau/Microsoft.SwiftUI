@@ -17,7 +17,7 @@ final class FlexibleHeightTests: XCTestCase {
         XCTAssertEqual(changes, 1)
         XCTAssertTrue(node.fillsHeight)
         observation.cancel()
-        _ = SwiftUINodeView(node: node).body
+        buildHosted(node)
     }
 
     #if canImport(AppKit) && !targetEnvironment(macCatalyst)

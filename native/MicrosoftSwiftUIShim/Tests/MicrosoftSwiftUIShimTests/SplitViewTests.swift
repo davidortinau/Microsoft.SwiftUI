@@ -19,7 +19,7 @@ final class SplitViewTests: XCTestCase {
         XCTAssertEqual(node.splitCompactColumn, "sidebar")
         XCTAssertEqual(node.splitViewStyle, "")
         XCTAssertEqual(node.children[1].splitColumnIdealWidth, 0)
-        _ = SwiftUINodeView(node: node).body
+        buildHosted(node)
         _ = SplitViewNodeView(node: node).body
         _ = SplitViewNodeView(node: split(columns: 2)).body
     }
@@ -70,7 +70,7 @@ final class SplitViewTests: XCTestCase {
         let button = MSUBridge.makeNode(kind: "button")
         XCTAssertFalse(button.hiddenInCompactWidth)
         button.hiddenInCompactWidth = true
-        _ = SwiftUINodeView(node: button).body
+        buildHosted(button)
     }
 
     @MainActor
@@ -83,6 +83,6 @@ final class SplitViewTests: XCTestCase {
         tabs.insertChild(tab, at: 0)
         tabs.tabViewStyle = "tabBarOnly"
         XCTAssertTrue(tabs.usesAdaptiveTabs)
-        _ = SwiftUINodeView(node: tabs).body
+        buildHosted(tabs)
     }
 }

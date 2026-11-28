@@ -25,7 +25,7 @@ final class FittingStackTests: XCTestCase {
         var changes = 0
         let observation = node.objectWillChange.sink { changes += 1 }
         node.stacksWhenTooWide = true
-        _ = SwiftUINodeView(node: node).body
+        buildHosted(node)
         XCTAssertEqual(changes, 1)
         XCTAssertTrue(node.stacksWhenTooWide)
         observation.cancel()
