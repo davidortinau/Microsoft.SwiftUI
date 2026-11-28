@@ -2018,6 +2018,50 @@ var cases = new (string Name, Action Test)[]
         using var capped = Block("Capped", 8).WithFlexibleWidth(120, SwiftHorizontalAlignment.Center);
         Assert(Math.Abs(Painted(capped, hostWidth, 200).Width - 120) <= 1);
     }),
+    // SentenceStudio issue 334. A minimum height used to be SwiftUI's `frame(minHeight:)`, which
+    // sets nothing in width and so places its child in the child's own measured width: a row
+    // with a minimum height was squeezed as every row was before 0.1.0-preview.67. It is now a
+    // layout that places the child in the width it was itself offered.
+    ("a row of two buttons is painted as wide with a minimum height as without", () =>
+    {
+        const double hostWidth = 400, gap = 8;
+        SwiftView Button(string title, double side) =>
+            Views.Button(Views.Text(title).WithPadding(0, side, 0, side), () => { })
+                .WithButtonStyle(SwiftButtonStyle.Plain).WithBackgroundColor("#3366CC");
+        SwiftView Row(double minimumHeight, bool flexible)
+        {
+            var row = Views.HStack(Button("Submit", 48), Button("I was correct", 16));
+            row.Spacing = gap;
+            if (minimumHeight > 0)
+                row.WithMinimumHeight(minimumHeight);
+            if (flexible)
+                row.WithFlexibleWidth(alignment: SwiftHorizontalAlignment.Center);
+            return row;
+        }
+        using var wide = Button("Submit", 48);
+        using var narrow = Button("I was correct", 16);
+        var apart = Painted(wide, hostWidth, 200).Width + gap + Painted(narrow, hostWidth, 200).Width;
+        Assert(apart < hostWidth - 40);
+        foreach (var flexible in new[] { false, true })
+        {
+            using var free = Row(0, flexible);
+            using var raised = Row(60, flexible);
+            var (without, with) = (Painted(free, hostWidth, 200).Width, Painted(raised, hostWidth, 200).Width);
+            if (Math.Abs(without - apart) > 1 || Math.Abs(with - without) > 1)
+                throw new Exception($"The two buttons (flexible width: {flexible}) are painted {with:0.#} points wide with a minimum height on their row and {without:0.#} without; each at its own width, with the gap, they take {apart:0.#}.");
+        }
+        // In height it is what the frame was: a painted child is raised to the minimum, an
+        // empty stack with a minimum height (a spacer, a bar of a chart) is that high, and a
+        // minimum lower than the child changes nothing.
+        using var bar = Views.VStack().WithMinimumHeight(60).WithFlexibleWidth().WithBackgroundColor("#3366CC");
+        var painted = Painted(bar, hostWidth, 200);
+        Assert(Math.Abs(painted.Height - 60) <= 1 && Math.Abs(painted.Width - hostWidth) <= 1);
+        using var low = Button("Submit", 48).WithMinimumHeight(4);
+        Assert(Math.Abs(Painted(low, hostWidth, 200).Height - Painted(wide, hostWidth, 200).Height) <= 1);
+        using var tall = Button("Submit", 48).WithMinimumHeight(60);
+        Assert(Math.Abs(Painted(tall, hostWidth, 200).Height - 60) <= 1);
+        Assert(Math.Abs(Painted(tall, hostWidth, 200).Width - Painted(wide, hostWidth, 200).Width) <= 1);
+    }),
     ("explicit host teardown", () =>
     {
         var taps = 0;

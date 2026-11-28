@@ -3286,22 +3286,63 @@ struct ListRowBackgroundHidden: ViewModifier {
 /// Opt-in `frame(width:)`: the view is exactly this wide whatever its container proposes. No
 /// frame at all when off, so existing views keep their layout. A modifier keeps the node view's
 /// body type small.
-/// `frame(minHeight:)`, applied only when there is a minimum. A flexible frame that sets
-/// nothing in a dimension still takes its child's size there and offers the child exactly
-/// that size when it places it. An `HStack` measured in a wider offer and then placed in its
-/// own width divides that width in equal shares, least flexible child first, so a child whose
-/// text can wrap is given less than it measured although its neighbour leaves the rest unused
+/// A minimum height, applied only when there is one. A flexible frame that sets nothing in a
+/// dimension still takes its child's size there and offers the child exactly that size when
+/// it places it. An `HStack` measured in a wider offer and then placed in its own width
+/// divides that width in equal shares, least flexible child first, so a child whose text can
+/// wrap is given less than it measured although its neighbour leaves the rest unused
 /// (SentenceStudio issue 260: "Submit" wrapped a letter to a line beside a second button).
-/// Every node used to get such a frame; now a node without a minimum height gets none.
+/// Every node used to get such a frame; since 0.1.0-preview.67 a node without a minimum height
+/// gets none, and since 0.1.0-preview.71 a node with one gets `MinimumHeightLayout`, not
+/// `frame(minHeight:)`, so a row that sets a minimum height keeps its children's widths too
+/// (SentenceStudio issue 334).
 struct MinimumHeightFrame: ViewModifier {
     let minHeight: CGFloat
 
     @ViewBuilder
     func body(content: Content) -> some View {
         if minHeight > 0 {
-            content.frame(minHeight: minHeight)
+            MinimumHeightLayout(minHeight: minHeight) { content }
         } else {
             content
+        }
+    }
+}
+
+/// What `frame(minHeight:)` does in height, and nothing in width (0.1.0-preview.71). The child
+/// is measured in the offer the layout is given, its height raised to the minimum; the layout
+/// is as wide as the child and as high as the child, not higher than a height offered and not
+/// lower than the minimum. The child is placed in the centre, in the layout's height, and in
+/// the width the layout was itself offered: `frame(minHeight:)` offers the child its own
+/// measured width there, which is what squeezes a row. More than one child (a modifier's
+/// content can be several views) is laid out as a `ZStack` would.
+struct MinimumHeightLayout: Layout {
+    var minHeight: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        // `frame(minHeight:)` around no view at all is no view: it takes no room.
+        guard !subviews.isEmpty else { return .zero }
+        let offered = ProposedViewSize(width: proposal.width,
+                                       height: proposal.height.map { max($0, minHeight) })
+        var size = CGSize.zero
+        for subview in subviews {
+            let fitted = subview.sizeThatFits(offered)
+            size.width = max(size.width, fitted.width)
+            size.height = max(size.height, fitted.height)
+        }
+        if let height = offered.height {
+            size.height = min(size.height, height)
+        }
+        size.height = max(size.height, minHeight)
+        return size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews,
+                       cache: inout ()) {
+        let offered = ProposedViewSize(width: proposal.width, height: bounds.height)
+        for subview in subviews {
+            subview.place(at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center,
+                          proposal: offered)
         }
     }
 }
