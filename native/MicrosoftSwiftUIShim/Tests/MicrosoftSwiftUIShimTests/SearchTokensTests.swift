@@ -8,18 +8,18 @@ final class SearchTokensTests: XCTestCase {
         let search = MSUBridge.makeNode(kind: "searchable")
         search.insertChild(MSUBridge.makeNode(kind: "vstack"), at: 0)
         XCTAssertEqual(search.searchTokenIds, [])
-        _ = SwiftUINodeView(node: search).body
+        buildHosted(search)
         search.searchTokenTitles = ["Korean", "Video"]
         search.searchTokenIds = ["language", "type"]
         search.focusRequested = true
-        _ = SwiftUINodeView(node: search).body
+        buildHosted(search)
         XCTAssertEqual(search.searchTokenIds, ["language", "type"])
         search.searchPlacement = "bottomBar"
         search.searchKeepsToolbar = true
-        _ = SwiftUINodeView(node: search).body
+        buildHosted(search)
         let titled = MSUBridge.makeNode(kind: "vstack")
         titled.navigationTitle = "Resources"
         titled.navigationSubtitle = "92 resources"
-        _ = SwiftUINodeView(node: titled).body
+        buildHosted(titled)
     }
 }

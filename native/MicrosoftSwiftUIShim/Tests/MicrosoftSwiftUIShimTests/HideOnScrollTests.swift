@@ -14,7 +14,7 @@ final class HideOnScrollTests: XCTestCase {
         XCTAssertFalse(node.hiddenInPlace)
         XCTAssertEqual(node.hiddenTransition, "fade")
         XCTAssertEqual(node.hiddenAnimationDuration, 0.2)
-        _ = SwiftUINodeView(node: node).body
+        buildHosted(node)
         var changes = 0
         let observation = node.objectWillChange.sink { changes += 1 }
         node.setHidden(true, transition: "slideDown", duration: 0.25)
@@ -24,7 +24,7 @@ final class HideOnScrollTests: XCTestCase {
         XCTAssertTrue(node.hiddenInPlace)
         XCTAssertEqual(node.hiddenTransition, "slideDown")
         XCTAssertEqual(node.hiddenAnimationDuration, 0.25)
-        _ = SwiftUINodeView(node: node).body
+        buildHosted(node)
         node.setHidden(false, transition: "slideDown", duration: 0.25)
         XCTAssertTrue(node.hasHiddenState)
         XCTAssertFalse(node.hiddenInPlace)
@@ -50,7 +50,7 @@ final class HideOnScrollTests: XCTestCase {
         }
         XCTAssertEqual(changes, 1, "Attaching the reporter re-renders the scroll")
         observation.cancel()
-        _ = SwiftUINodeView(node: scroll).body
+        buildHosted(scroll)
 
         scroll.reportScrollGeometry(offsetY: -100, contentHeight: 900, containerHeight: 600,
                                     insetTop: 100, insetBottom: 80)
@@ -77,7 +77,7 @@ final class HideOnScrollTests: XCTestCase {
         var reports: [Double] = []
         page.reportKeyboardOverlap(300)
         page.setKeyboardOverlapChangedHandler { reports.append($0) }
-        _ = SwiftUINodeView(node: page).body
+        buildHosted(page)
         page.reportKeyboardOverlap(0)
         page.reportKeyboardOverlap(0.6)
         page.reportKeyboardOverlap(291)
@@ -92,7 +92,7 @@ final class HideOnScrollTests: XCTestCase {
         let page = MSUBridge.makeNode(kind: "vstack")
         var reports: [Int] = []
         page.setAccessibilitySettingsChangedHandler { reports.append($0) }
-        _ = SwiftUINodeView(node: page).body
+        buildHosted(page)
         page.reportAccessibilitySettings(voiceOver: false, reduceMotion: false)
         page.reportAccessibilitySettings(voiceOver: false, reduceMotion: false)
         page.reportAccessibilitySettings(voiceOver: true, reduceMotion: false)

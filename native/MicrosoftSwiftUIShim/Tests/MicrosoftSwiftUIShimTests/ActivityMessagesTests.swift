@@ -14,7 +14,7 @@ final class ActivityMessagesTests: XCTestCase {
         let layer = MSUBridge.makeNode(kind: "vstack")
         overlay.insertChild(page, at: 0)
         overlay.insertChild(layer, at: 1)
-        _ = SwiftUINodeView(node: overlay).body
+        buildHosted(overlay)
         _ = OverlayNodeView(node: overlay).body
         var changes = 0
         let observation = overlay.objectWillChange.sink { changes += 1 }
@@ -33,7 +33,7 @@ final class ActivityMessagesTests: XCTestCase {
         text.accessibilityAnnouncement = "Saved"
         XCTAssertEqual(changes, 1)
         observation.cancel()
-        _ = SwiftUINodeView(node: text).body
+        buildHosted(text)
 
         let before = msuPostedAnnouncements.count
         msuPostAnnouncement("")

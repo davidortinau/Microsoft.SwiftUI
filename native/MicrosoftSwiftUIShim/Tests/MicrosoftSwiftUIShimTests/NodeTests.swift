@@ -41,7 +41,7 @@ final class NodeTests: XCTestCase {
         XCTAssertEqual(title.text,
                        "A full title remains available for accessibility")
         XCTAssertEqual(updates, 2)
-        _ = SwiftUINodeView(node: title).body
+        buildHosted(title)
         withExtendedLifetime(subscription) {}
     }
 
@@ -173,7 +173,7 @@ final class NodeTests: XCTestCase {
         XCTAssertEqual(button.buttonBorderDarkHex, "#93A3C7")
         XCTAssertEqual(button.buttonCornerRadius, 25)
         XCTAssertFalse(button.hasButtonEllipticalCornerRadii)
-        _ = SwiftUINodeView(node: button).body
+        buildHosted(button)
         button.isEnabled = true
         button.invokeAction()
         XCTAssertEqual(taps, 1)
@@ -238,7 +238,7 @@ final class NodeTests: XCTestCase {
         XCTAssertEqual(single.size.width, 570)
         XCTAssertEqual(group.children.map(\.id), buttons.map(\.id))
         XCTAssertEqual(group.selectedIndex, 3)
-        _ = SwiftUINodeView(node: group).body
+        buildHosted(group)
     }
 
     func testButtonGroupLayoutDistributesOnlyPositiveSurplusOverIntrinsicWidths() {
@@ -611,7 +611,7 @@ final class NodeTests: XCTestCase {
         button.shadowDarkHex = "#000000"
         button.shadowOpacity = 1
         button.shadowOffsetY = 3
-        _ = SwiftUINodeView(node: button).body
+        buildHosted(button)
     }
 
     func testEllipticalButtonCornersNormalizeOriginalBoundsAndInsetWithoutRescaling() {
@@ -713,9 +713,9 @@ final class NodeTests: XCTestCase {
         text.text = "Logout"
         XCTAssertFalse(text.isUnderlined)
         text.isUnderlined = true
-        _ = SwiftUINodeView(node: circle).body
-        _ = SwiftUINodeView(node: decoration).body
-        _ = SwiftUINodeView(node: text).body
+        buildHosted(circle)
+        buildHosted(decoration)
+        buildHosted(text)
         text.isUnderlined = false
         XCTAssertEqual(circle.diameter, 8)
         XCTAssertEqual(circle.foregroundDarkHex, "#6B8CFF")
@@ -741,7 +741,7 @@ final class NodeTests: XCTestCase {
         XCTAssertEqual(text.preferredScheme, "dark")
         text.preferredScheme = "light"
         XCTAssertEqual(text.preferredScheme, "light")
-        _ = SwiftUINodeView(node: text).body
+        buildHosted(text)
     }
 
     func testSourceStyleFrameSurfaceProgressAndInsetRetainChildIdentity() {
@@ -796,7 +796,7 @@ final class NodeTests: XCTestCase {
         XCTAssertEqual(progress.progressThickness, 8)
         progress.maximum = 0
         progress.value = 0
-        _ = SwiftUINodeView(node: inset).body
+        buildHosted(inset)
     }
 
     func testNativeListRowPaletteInlineTitleCenteredScrollAndSecurePromptState() {
@@ -840,10 +840,10 @@ final class NodeTests: XCTestCase {
         XCTAssertEqual(secure.placeholderColorDarkHex, "#93A3C7")
         XCTAssertEqual(button.minimumHeight, 44)
         XCTAssertTrue(scroll.centerWhenShort && title.inlineNavigationTitle)
-        _ = SwiftUINodeView(node: list).body
-        _ = SwiftUINodeView(node: form).body
-        _ = SwiftUINodeView(node: scroll).body
-        _ = SwiftUINodeView(node: title).body
+        buildHosted(list)
+        buildHosted(form)
+        buildHosted(scroll)
+        buildHosted(title)
         title.navigationTitle = "Updated"
         XCTAssertEqual(title.navigationTitle, "Updated")
         XCTAssertEqual(secure.kind, "secureField")
@@ -852,7 +852,7 @@ final class NodeTests: XCTestCase {
     func testScrollBottomAnchorDefaultsOffAndKeepsChildrenWhenToggled() {
         let scroll = MSUBridge.makeNode(kind: "scroll")
         XCTAssertFalse(scroll.anchorsToBottom)
-        _ = SwiftUINodeView(node: scroll).body
+        buildHosted(scroll)
 
         var changes = 0
         let observation = scroll.objectWillChange.sink { changes += 1 }
@@ -865,14 +865,14 @@ final class NodeTests: XCTestCase {
             scroll.insertChild(message, at: scroll.children.count)
         }
         let retained = scroll.children.map(\.id)
-        _ = SwiftUINodeView(node: scroll).body
+        buildHosted(scroll)
 
         scroll.centerWhenShort = true
-        _ = SwiftUINodeView(node: scroll).body
+        buildHosted(scroll)
         XCTAssertTrue(scroll.centerWhenShort && scroll.anchorsToBottom)
         let beforeDisable = changes
         scroll.anchorsToBottom = false
-        _ = SwiftUINodeView(node: scroll).body
+        buildHosted(scroll)
         XCTAssertEqual(scroll.children.map(\.id), retained)
         XCTAssertEqual(changes, beforeDisable + 1)
         observation.cancel()
@@ -905,7 +905,7 @@ final class NodeTests: XCTestCase {
         }
         let retainedCell = second.children[0]
         let retainedId = second.id
-        _ = SwiftUINodeView(node: grid).body
+        buildHosted(grid)
         XCTAssertEqual(grid.gridColumnMinimumWidths.map(\.doubleValue), [0, 0, 120, 0, 0])
         XCTAssertEqual(grid.children.map(\.id), [header.id, first.id, retainedId])
 
@@ -924,7 +924,7 @@ final class NodeTests: XCTestCase {
         oldScroll.centerWhenShort = true
         XCTAssertEqual(oldScroll.kind, "scroll")
         XCTAssertTrue(oldScroll.centerWhenShort)
-        _ = SwiftUINodeView(node: oldScroll).body
+        buildHosted(oldScroll)
     }
 
     func testComposedMenuRetainsNativeLabelOptionsAndSelectionActions() {
@@ -956,7 +956,7 @@ final class NodeTests: XCTestCase {
         }
         menu.insertChild(video, at: 1)
         menu.insertChild(audio, at: 2)
-        _ = SwiftUINodeView(node: menu).body
+        buildHosted(menu)
 
         XCTAssertEqual(menu.children.map(\.id), [label.id, video.id, audio.id])
         XCTAssertEqual(label.children.map(\.id), [selected.id, chevron.id])
@@ -971,7 +971,7 @@ final class NodeTests: XCTestCase {
         let original = MSUBridge.makeNode(kind: "menu")
         original.text = "More"
         original.insertChild(MSUBridge.makeNode(kind: "button"), at: 0)
-        _ = SwiftUINodeView(node: original).body
+        buildHosted(original)
         XCTAssertEqual(original.text, "More")
         XCTAssertEqual(original.children.first?.kind, "button")
     }
@@ -995,7 +995,7 @@ final class NodeTests: XCTestCase {
         let text = MSUBridge.makeNode(kind: "text")
         row.insertChild(text, at: 0)
         row.adaptiveStackBelowWidth = 430
-        _ = SwiftUINodeView(node: row).body
+        buildHosted(row)
         XCTAssertTrue(row.children.first === text)
     }
 
@@ -1082,10 +1082,10 @@ final class NodeTests: XCTestCase {
         let text = MSUBridge.makeNode(kind: "text")
         text.isStrikethrough = true
         text.opacity = 0.75
-        _ = SwiftUINodeView(node: divider).body
-        _ = SwiftUINodeView(node: spinner).body
-        _ = SwiftUINodeView(node: line).body
-        _ = SwiftUINodeView(node: text).body
+        buildHosted(divider)
+        buildHosted(spinner)
+        buildHosted(line)
+        buildHosted(text)
         XCTAssertEqual(spinner.kind, "indeterminateProgress")
         XCTAssertEqual(line.kind, "progress")
         XCTAssertEqual(text.opacity, 0.75)
@@ -1105,7 +1105,7 @@ final class NodeTests: XCTestCase {
         photo.photoData = png as NSData
         XCTAssertNotNil(photo.decodedPhoto)
         XCTAssertEqual(photo.photoStatus, "loading")
-        _ = SwiftUINodeView(node: photo).body
+        buildHosted(photo)
         photo.reportPhotoRendered()
         photo.reportPhotoRendered()
         XCTAssertEqual(rendered, 1)
@@ -1115,7 +1115,7 @@ final class NodeTests: XCTestCase {
         let zoom = MSUBridge.makeNode(kind: "zoomPhoto")
         zoom.photoData = png as NSData
         XCTAssertNotNil(zoom.decodedPhoto)
-        _ = SwiftUINodeView(node: zoom).body
+        buildHosted(zoom)
 
         let corrupt = MSUBridge.makeNode(kind: "photo")
         var corruptErrors: [String] = []
@@ -1178,7 +1178,7 @@ final class NodeTests: XCTestCase {
         popup.insertChild(form, at: 0)
         popup.insertChild(options, at: 1)
         popup.isPresented = true
-        _ = SwiftUINodeView(node: popup).body
+        buildHosted(popup)
         var dismissals = 0
         popup.setDismissedHandler { dismissals += 1 }
         popup.dismissQuickSuggestions()
@@ -1240,7 +1240,7 @@ final class NodeTests: XCTestCase {
         XCTAssertTrue(editor.showsTextEditorPlaceholder)
         editor.focusRequested = false
         XCTAssertTrue(editor.showsTextEditorPlaceholder)
-        _ = SwiftUINodeView(node: editor).body
+        buildHosted(editor)
         editor.placeholder = ""
         XCTAssertFalse(editor.showsTextEditorPlaceholder)
 
@@ -1260,7 +1260,7 @@ final class NodeTests: XCTestCase {
         editor.hidesTextEditorScrollBackground = true
         XCTAssertTrue(editor.hidesTextEditorScrollBackground)
         XCTAssertEqual(updates, 1)
-        _ = SwiftUINodeView(node: editor).body
+        buildHosted(editor)
         editor.hidesTextEditorScrollBackground = false
         XCTAssertFalse(editor.hidesTextEditorScrollBackground)
         XCTAssertEqual(updates, 2)
@@ -1278,7 +1278,7 @@ final class NodeTests: XCTestCase {
         let panel = MSUBridge.makeNode(kind: "navigationStack")
         inspector.insertChild(page, at: 0)
         inspector.insertChild(panel, at: 1)
-        _ = SwiftUINodeView(node: inspector).body
+        buildHosted(inspector)
 
         var changes = 0
         let observation = inspector.objectWillChange.sink { changes += 1 }
@@ -1288,7 +1288,7 @@ final class NodeTests: XCTestCase {
         inspector.sheetDetentFraction = 0.6
         inspector.isPresented = true
         XCTAssertEqual(changes, 5)
-        _ = SwiftUINodeView(node: inspector).body
+        buildHosted(inspector)
         XCTAssertEqual(inspector.children.map(\.id), [page.id, panel.id])
         observation.cancel()
     }
@@ -1320,21 +1320,21 @@ final class NodeTests: XCTestCase {
         sheet.sheetDetentFraction = 0.7
         sheet.insertChild(MSUBridge.makeNode(kind: "text"), at: 0)
         sheet.insertChild(MSUBridge.makeNode(kind: "scroll"), at: 1)
-        _ = SwiftUINodeView(node: sheet).body
+        buildHosted(sheet)
         XCTAssertEqual(sheet.sheetDetentFraction, 0.7)
 
         let cover = MSUBridge.makeNode(kind: "photoCover")
         cover.insertChild(MSUBridge.makeNode(kind: "text"), at: 0)
         cover.insertChild(MSUBridge.makeNode(kind: "zoomPhoto"), at: 1)
         cover.insertChild(MSUBridge.makeNode(kind: "button"), at: 2)
-        _ = SwiftUINodeView(node: cover).body
+        buildHosted(cover)
         XCTAssertEqual(cover.children.map(\.kind), ["text", "zoomPhoto", "button"])
 
         let busy = MSUBridge.makeNode(kind: "starterOverlay")
         busy.insertChild(MSUBridge.makeNode(kind: "tabView"), at: 0)
         busy.text = "Creating starter resource"
         busy.isPresented = true
-        _ = SwiftUINodeView(node: busy).body
+        buildHosted(busy)
         XCTAssertTrue(busy.isPresented)
         XCTAssertTrue(busy.children.first?.kind == "tabView")
     }
@@ -1353,7 +1353,7 @@ final class NodeTests: XCTestCase {
         dialog.setDeleteCancelledHandler { cancellations += 1 }
         dialog.setDeleteConfirmedHandler { confirmations += 1 }
         dialog.isPresented = true
-        _ = SwiftUINodeView(node: dialog).body
+        buildHosted(dialog)
         dialog.cancelDelete()
         dialog.reportDeleteDismissed()
         XCTAssertFalse(dialog.isPresented)
@@ -1387,7 +1387,7 @@ final class NodeTests: XCTestCase {
         dialog.transparentDeleteBackdrop = true
         XCTAssertTrue(dialog.transparentDeleteBackdrop)
         XCTAssertEqual(updates, 1)
-        _ = SwiftUINodeView(node: dialog).body
+        buildHosted(dialog)
         dialog.transparentDeleteBackdrop = false
         XCTAssertFalse(dialog.transparentDeleteBackdrop)
         XCTAssertEqual(updates, 2)
@@ -1400,8 +1400,9 @@ final class NodeTests: XCTestCase {
     /// seconds to resolve at launch. Each kind is type-erased on its own now.
     @MainActor
     func testNodeViewBodyTypeStaysSmall() {
-        let node = MSUBridge.makeNode(kind: "text")
-        let name = String(reflecting: type(of: SwiftUINodeView(node: node).body))
+        // The type is read from the declaration: evaluating a body outside a hosted view
+        // only to name its type made SwiftUI warn about the environment.
+        let name = String(reflecting: SwiftUINodeView.Body.self)
         XCTAssertLessThan(name.count, 1_000_000,
                           "SwiftUINodeView.body grew to a \(name.count)-character type; erase large branches.")
     }

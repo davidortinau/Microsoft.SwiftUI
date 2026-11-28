@@ -14,7 +14,7 @@ final class CardGestureTests: XCTestCase {
         XCTAssertEqual(card.offsetY, 0)
         XCTAssertEqual(card.rotationDegrees, 0)
         XCTAssertFalse(card.transformAnimated)
-        _ = SwiftUINodeView(node: card).body
+        buildHosted(card)
 
         var changes = 0
         let observation = card.objectWillChange.sink { changes += 1 }
@@ -25,14 +25,14 @@ final class CardGestureTests: XCTestCase {
         XCTAssertEqual(card.offsetY, -3)
         XCTAssertEqual(card.rotationDegrees, 2.5)
         XCTAssertFalse(card.transformAnimated)
-        _ = SwiftUINodeView(node: card).body
+        buildHosted(card)
 
         card.setTransform(offsetX: 0, offsetY: 0, rotation: 0, animated: true)
         XCTAssertTrue(card.hasTransform, "Returning to zero keeps the same view structure.")
         XCTAssertTrue(card.transformAnimated)
         XCTAssertEqual(card.offsetX, 0)
         observation.cancel()
-        _ = SwiftUINodeView(node: card).body
+        buildHosted(card)
     }
 
     @MainActor
@@ -42,7 +42,7 @@ final class CardGestureTests: XCTestCase {
         card.setTapHandler { taps += 1 }
         XCTAssertFalse(card.hasHorizontalDrag)
         XCTAssertEqual(card.horizontalDragMinimumDistance, 10)
-        _ = SwiftUINodeView(node: card).body
+        buildHosted(card)
 
         var changed: [Double] = []
         var ended: [(Double, Double)] = []
@@ -55,7 +55,7 @@ final class CardGestureTests: XCTestCase {
         XCTAssertEqual(changes, 1, "Attaching the gesture must re-render the node.")
         observation.cancel()
         XCTAssertTrue(card.hasHorizontalDrag)
-        _ = SwiftUINodeView(node: card).body
+        buildHosted(card)
 
         // An end without a begun drag is ignored.
         card.reportHorizontalDragEnded(200, predicted: 260)
@@ -95,6 +95,6 @@ final class CardGestureTests: XCTestCase {
         XCTAssertFalse(card.hasHorizontalDrag)
         card.reportHorizontalDragChanged(10)
         XCTAssertEqual(changed.count, 4)
-        _ = SwiftUINodeView(node: card).body
+        buildHosted(card)
     }
 }
